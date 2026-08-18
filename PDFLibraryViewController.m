@@ -1,5 +1,6 @@
 #import "PDFLibraryViewController.h"
 #import "PDFReaderViewController.h"
+#import "PDFReaderViewController+Handoff.h"
 #import "RecentStore.h"
 #import "NetworkCenterViewController.h"
 @implementation PDFLibraryViewController
@@ -74,10 +75,13 @@
 
     [RecentStore touchPath:path];
 
-    /* Warm-start handoff: remove the old reader first so its CGPDFDocument,
-       active page and disposable view state can be released under MRC before
-       the new document is opened. */
-    if(self.navigationController.topViewController!=self)
+    /* Warm-start handoff: explicitly drop active page/document state before
+       creating the replacement reader. This keeps peak RAM lower on iPad 1. */
+    UIViewController *top=self.navigationController.topViewController;
+    if([top isKindOfClass:[PDFReaderViewController class]])
+        [(PDFReaderViewController *)top prepareForExternalPDFHandoff];
+
+    if(top!=self)
         [self.navigationController popToViewController:self animated:NO];
 
     PDFReaderViewController *reader=[[[PDFReaderViewController alloc] initWithPDFPath:path] autorelease];
