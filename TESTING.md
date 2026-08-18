@@ -25,16 +25,22 @@ Do not accept simulator `.tbd` warnings from iPhoneOS9.3.sdk; that indicates the
 - [ ] Library screen appears.
 - [ ] PDF opens.
 - [ ] Previous/next navigation works.
-- [ ] Zoom works.
+- [ ] Pinch zoom works without the page jumping to the left.
+- [ ] Double-tap zoom works; double tap again returns to 1x.
+- [ ] Current zoom level survives previous/next page navigation.
+- [ ] Approximate relative reading position survives previous/next page navigation while zoomed.
+- [ ] `Sayfaya Git` accepts a valid page and rejects out-of-range values safely.
 - [ ] Last page is remembered.
 - [ ] Bookmark persists after relaunch.
+- [ ] Bookmark list opens and navigates to the selected bookmarked page.
 
 ## Memory-focused test
 ### Reader
 - [ ] Open a large PDF and stay in reader for 10 minutes.
 - [ ] Repeatedly zoom 1x -> max -> 1x.
-- [ ] Change pages rapidly.
-- [ ] Rotate portrait/landscape repeatedly.
+- [ ] Change pages rapidly at 1x.
+- [ ] Change pages rapidly while zoomed at 2x or higher.
+- [ ] Rotate portrait/landscape repeatedly while zoomed.
 - [ ] Return to library and open a second PDF.
 - [ ] No progressive slowdown or crash.
 
@@ -59,6 +65,7 @@ Do not accept simulator `.tbd` warnings from iPhoneOS9.3.sdk; that indicates the
 ### Memory warning
 If possible, create memory pressure with other apps/processes and verify:
 - [ ] thumbnail cache is cleared;
+- [ ] bookmark/note action-sheet temporary arrays are cleared;
 - [ ] search results can be discarded safely;
 - [ ] reader stays recoverable;
 - [ ] current document/page state is not lost.
@@ -66,7 +73,11 @@ If possible, create memory pressure with other apps/processes and verify:
 ## Annotation test
 - [ ] Draw annotation.
 - [ ] Add highlight.
-- [ ] Add note marker.
+- [ ] Add a text note on one page.
+- [ ] Open `Sayfa Notları` and verify the note appears only on that page.
+- [ ] Open the note and verify its full text.
+- [ ] Edit the note and verify the changed text persists.
+- [ ] Delete the note and verify the marker/list entry disappears.
 - [ ] Add simple signature.
 - [ ] Export annotated PDF.
 - [ ] Reopen exported PDF and verify visible flattened annotations.
@@ -92,4 +103,5 @@ SMB/SFTP are not considered test failures while optional connector libraries are
 These are engineering targets, not hard guarantees:
 - normal reading: roughly 30–50 MB preferred;
 - thumbnail/search/reflow operations: keep as far below 70–90 MB as practical;
+- zoom persistence/bookmark/note UI must not introduce page bitmap caching;
 - any feature showing sustained unbounded memory growth fails testing.
