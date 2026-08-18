@@ -126,9 +126,13 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
         NSArray *semantic=[self semanticRectsIntersectingPreview];
         if([semantic count]>0){
             [self drawNormalizedHighlightRects:semantic context:c color:_highlightColorName alpha:.24f];
-        } else {
+        } else if([_pageTextRects count]==0) {
             SetHighlightFill(c,_highlightColorName,.24f);
             CGContextFillRect(c,[self highlightPreviewRect]);
+            CGContextSetRGBStrokeColor(c,1,.55,0,.9);
+            CGContextSetLineWidth(c,1.0f);
+            CGContextStrokeRect(c,[self highlightPreviewRect]);
+        } else {
             CGContextSetRGBStrokeColor(c,1,.55,0,.9);
             CGContextSetLineWidth(c,1.0f);
             CGContextStrokeRect(c,[self highlightPreviewRect]);
@@ -153,7 +157,7 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
         if([semantic count]>0){
             NSDictionary *a=[NSDictionary dictionaryWithObjectsAndKeys:@"highlight",@"type",semantic,@"rects",_highlightColorName?_highlightColorName:@"yellow",@"color",nil];
             [AnnotationStore addAnnotation:a path:_pdfPath page:_page];
-        } else {
+        } else if([_pageTextRects count]==0) {
             CGRect q=[self highlightPreviewRect];
             if(q.size.width>=8.0f&&q.size.height>=5.0f&&self.bounds.size.width>0&&self.bounds.size.height>0){
                 CGRect n=CGRectMake(q.origin.x/self.bounds.size.width,q.origin.y/self.bounds.size.height,q.size.width/self.bounds.size.width,q.size.height/self.bounds.size.height);
@@ -161,9 +165,7 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
                 [AnnotationStore addAnnotation:a path:_pdfPath page:_page];
             }
         }
-        _hasHighlightPreview=NO;
-        self.highlightSelectionEnabled=NO;
-        [self setNeedsDisplay];
+        [self clearTemporarySelection];
         return;
     }
     if([_points count]>1){
@@ -175,9 +177,8 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
 }
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
     [_points removeAllObjects];
-    if(_highlightSelectionEnabled)self.highlightSelectionEnabled=NO;
-    _hasHighlightPreview=NO;
-    [self setNeedsDisplay];
+    if(_highlightSelectionEnabled)[self clearTemporarySelection];
+    else {_hasHighlightPreview=NO;[self setNeedsDisplay];}
 }
 - (void)dealloc { [_pdfPath release];[_highlightColorName release];[_pageTextRects release];[_points release];[super dealloc]; }
 @end
