@@ -12,7 +12,6 @@
     CGFloat _sessionZoomScale;
     NSArray *_bookmarkSheetPages;
     NSArray *_noteSheetIndexes;
-    NSArray *_activePageTextRects;
     NSUInteger _editingAnnotationIndex;
     UITapGestureRecognizer *_doubleTapRecognizer;
 }
