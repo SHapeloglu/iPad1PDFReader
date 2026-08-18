@@ -4,10 +4,13 @@
 #import "AppearanceStore.h"
 #import "AnnotationOverlayView.h"
 #import "AnnotationStore.h"
+#import "PDFTextExtractor.h"
 #import "ReflowViewController.h"
 #import "PageManagerViewController.h"
 #import "PDFAnnotationExporter.h"
 #import "PDFOutlineParser.h"
+
+static NSString * const LastHighlightColorKey=@"LastHighlightColor";
 
 @implementation PDFReaderViewController
 
@@ -49,6 +52,8 @@
 
     _overlay=[[AnnotationOverlayView alloc] initWithFrame:CGRectZero];
     _overlay.pdfPath=_pdfPath;
+    NSString *savedColor=[[NSUserDefaults standardUserDefaults] stringForKey:LastHighlightColorKey];
+    if([savedColor length]>0)_overlay.highlightColorName=savedColor;
     [_pageView addSubview:_overlay];
 
     _doubleTapRecognizer=[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
@@ -142,6 +147,7 @@
     if(desiredZoom<1.0f)desiredZoom=1.0f;
     CGPoint relative=[self normalizedViewportCenter];
 
+    [_overlay clearTemporarySelection];
     [_scrollView setZoomScale:1.0f animated:NO];
     [_pageView setPDFPage:CGPDFDocumentGetPage(_document,_currentPage)];
     [BookmarkStore setLastPage:_currentPage forPath:_pdfPath];
@@ -229,6 +235,28 @@
     [self.navigationController pushViewController:v animated:YES];
 }
 
+- (void)showHighlightColors {
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Fosfor Rengi" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:@"Sarı",@"Yeşil",@"Pembe",@"Turuncu",@"Açık Mavi",nil] autorelease];
+    s.tag=103;
+    [s showFromToolbar:_toolbar];
+}
+
+- (void)beginHighlightWithColor:(NSString *)color {
+    if(!_document||_currentPage<1||_currentPage>_pageCount)return;
+    CGPDFPageRef page=CGPDFDocumentGetPage(_document,_currentPage);
+    NSArray *rects=[PDFTextExtractor normalizedTextRectsForPage:page maxRects:160];
+    _overlay.drawingEnabled=NO;
+    _overlay.highlightColorName=color?color:@"yellow";
+    _overlay.pageTextRects=rects;
+    [[NSUserDefaults standardUserDefaults] setObject:_overlay.highlightColorName forKey:LastHighlightColorKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    _overlay.highlightSelectionEnabled=YES;
+
+    NSString *message=([rects count]>0)?@"Metin üzerinde parmağınızı sürükleyin. Highlight aktif sayfadaki metin kutularına oturur.":@"Bu sayfada seçilebilir metin bulunamadı. Alan highlight modu kullanılacak; OCR çalıştırılmaz.";
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Highlight" message:message delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+    [a show];
+}
+
 - (void)showTools {
     UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Araçlar" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:
                       @"Ara",@"Belge Gezgini",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight Seç",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
@@ -252,6 +280,14 @@
         }
         return;
     }
+    if(s.tag==103){
+        if(b==0)[self beginHighlightWithColor:@"yellow"];
+        else if(b==1)[self beginHighlightWithColor:@"green"];
+        else if(b==2)[self beginHighlightWithColor:@"pink"];
+        else if(b==3)[self beginHighlightWithColor:@"orange"];
+        else if(b==4)[self beginHighlightWithColor:@"cyan"];
+        return;
+    }
     if(s.tag!=100)return;
 
     if(b==0){SearchViewController *v=[[[SearchViewController alloc] initWithPDFPath:_pdfPath] autorelease];v.delegate=self;[self.navigationController pushViewController:v animated:YES];}
@@ -260,8 +296,8 @@
     else if(b==3){OutlineViewController *v=[[[OutlineViewController alloc] initWithItems:[PDFOutlineParser outlineForDocument:_document]] autorelease];v.delegate=self;[self.navigationController pushViewController:v animated:YES];}
     else if(b==4){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfaya Git" message:[NSString stringWithFormat:@"1 - %lu",(unsigned long)_pageCount] delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Git",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setKeyboardType:UIKeyboardTypeNumberPad];a.tag=31;[a show];}
     else if(b==5)[self showBookmarks];
-    else if(b==6){_overlay.highlightSelectionEnabled=NO;_overlay.drawingEnabled=!_overlay.drawingEnabled;}
-    else if(b==7){_overlay.drawingEnabled=NO;_overlay.highlightSelectionEnabled=YES;UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Highlight" message:@"Vurgulamak istediğiniz alan üzerinde parmağınızı sürükleyin. Seçimden sonra normal kaydırma otomatik geri gelir." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];}
+    else if(b==6){[_overlay clearTemporarySelection];_overlay.drawingEnabled=!_overlay.drawingEnabled;}
+    else if(b==7)[self showHighlightColors];
     else if(b==8){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfa Notu" message:@"Bu not yalnızca mevcut sayfaya bağlıdır." delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=32;[a show];}
     else if(b==9)[self showPageNotes];
     else if(b==10){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"İmza" message:nil delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=30;[a show];}
@@ -312,12 +348,13 @@
     [super didReceiveMemoryWarning];
     [_bookmarkSheetPages release]; _bookmarkSheetPages=nil;
     [_noteSheetIndexes release]; _noteSheetIndexes=nil;
-    _overlay.highlightSelectionEnabled=NO;
+    [_overlay clearTemporarySelection];
     if(!self.view.window)_pageView.pdfPage=NULL;
 }
 
 - (void)dealloc {
     _scrollView.delegate=nil;
+    [_overlay clearTemporarySelection];
     [_pdfPath release];
     [_bookmarkSheetPages release];
     [_noteSheetIndexes release];
