@@ -1,8 +1,17 @@
 #import "AnnotationOverlayView.h"
 #import "AnnotationStore.h"
 #import <math.h>
+
+static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
+    if([name isEqualToString:@"green"]) CGContextSetRGBFillColor(c,.35f,1.0f,.30f,alpha);
+    else if([name isEqualToString:@"pink"]) CGContextSetRGBFillColor(c,1.0f,.35f,.70f,alpha);
+    else if([name isEqualToString:@"orange"]) CGContextSetRGBFillColor(c,1.0f,.62f,.18f,alpha);
+    else if([name isEqualToString:@"cyan"]) CGContextSetRGBFillColor(c,.25f,.90f,1.0f,alpha);
+    else CGContextSetRGBFillColor(c,1.0f,1.0f,.10f,alpha);
+}
+
 @implementation AnnotationOverlayView
-@synthesize pdfPath=_pdfPath,page=_page,drawingEnabled=_drawingEnabled,highlightSelectionEnabled=_highlightSelectionEnabled;
+@synthesize pdfPath=_pdfPath,page=_page,drawingEnabled=_drawingEnabled,highlightSelectionEnabled=_highlightSelectionEnabled,highlightColorName=_highlightColorName;
 
 - (id)initWithFrame:(CGRect)f {
     if((self=[super initWithFrame:f])){
@@ -10,6 +19,7 @@
         self.opaque=NO;
         self.userInteractionEnabled=NO;
         _points=[[NSMutableArray alloc] init];
+        _highlightColorName=[@"yellow" copy];
     }
     return self;
 }
@@ -66,15 +76,15 @@
         } else {
             CGRect q=CGRectFromString([a objectForKey:@"rect"]);
             q=CGRectMake(q.origin.x*self.bounds.size.width,q.origin.y*self.bounds.size.height,q.size.width*self.bounds.size.width,q.size.height*self.bounds.size.height);
-            if([t isEqualToString:@"highlight"]){CGContextSetRGBFillColor(c,1,1,0,.35);CGContextFillRect(c,q);}
+            if([t isEqualToString:@"highlight"]){SetHighlightFill(c,[a objectForKey:@"color"],.34f);CGContextFillRect(c,q);}
             else if([t isEqualToString:@"note"]){CGContextSetRGBFillColor(c,1,.8,.1,.9);CGContextFillEllipseInRect(c,q);}
             else if([t isEqualToString:@"signature"]){[[UIColor darkGrayColor] set];[[a objectForKey:@"text"] drawInRect:q withFont:[UIFont italicSystemFontOfSize:22]];}
         }
     }
     if(_highlightSelectionEnabled&&_hasHighlightPreview){
-        CGContextSetRGBFillColor(c,1,1,0,.25);
+        SetHighlightFill(c,_highlightColorName,.24f);
         CGContextFillRect(c,[self highlightPreviewRect]);
-        CGContextSetRGBStrokeColor(c,1,.7,0,.9);
+        CGContextSetRGBStrokeColor(c,1,.55,0,.9);
         CGContextSetLineWidth(c,1.0f);
         CGContextStrokeRect(c,[self highlightPreviewRect]);
     }
@@ -96,7 +106,7 @@
         CGRect q=[self highlightPreviewRect];
         if(q.size.width>=8.0f&&q.size.height>=5.0f&&self.bounds.size.width>0&&self.bounds.size.height>0){
             CGRect n=CGRectMake(q.origin.x/self.bounds.size.width,q.origin.y/self.bounds.size.height,q.size.width/self.bounds.size.width,q.size.height/self.bounds.size.height);
-            NSDictionary *a=[NSDictionary dictionaryWithObjectsAndKeys:@"highlight",@"type",NSStringFromCGRect(n),@"rect",nil];
+            NSDictionary *a=[NSDictionary dictionaryWithObjectsAndKeys:@"highlight",@"type",NSStringFromCGRect(n),@"rect",_highlightColorName?_highlightColorName:@"yellow",@"color",nil];
             [AnnotationStore addAnnotation:a path:_pdfPath page:_page];
         }
         _hasHighlightPreview=NO;
@@ -117,5 +127,5 @@
     _hasHighlightPreview=NO;
     [self setNeedsDisplay];
 }
-- (void)dealloc { [_pdfPath release];[_points release];[super dealloc]; }
+- (void)dealloc { [_pdfPath release];[_highlightColorName release];[_points release];[super dealloc]; }
 @end
