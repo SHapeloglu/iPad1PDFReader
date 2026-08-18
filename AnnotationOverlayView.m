@@ -11,7 +11,7 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
 }
 
 @implementation AnnotationOverlayView
-@synthesize pdfPath=_pdfPath,page=_page,drawingEnabled=_drawingEnabled,highlightSelectionEnabled=_highlightSelectionEnabled,highlightColorName=_highlightColorName;
+@synthesize pdfPath=_pdfPath,page=_page,drawingEnabled=_drawingEnabled,highlightSelectionEnabled=_highlightSelectionEnabled,highlightColorName=_highlightColorName,pageTextRects=_pageTextRects;
 
 - (id)initWithFrame:(CGRect)f {
     if((self=[super initWithFrame:f])){
@@ -46,6 +46,15 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
     [self setNeedsDisplay];
 }
 
+- (void)clearTemporarySelection {
+    _hasHighlightPreview=NO;
+    _highlightStart=CGPointZero;
+    _highlightCurrent=CGPointZero;
+    [_pageTextRects release]; _pageTextRects=nil;
+    self.highlightSelectionEnabled=NO;
+    [self setNeedsDisplay];
+}
+
 - (void)reloadAnnotations { [self setNeedsDisplay]; }
 
 - (CGRect)highlightPreviewRect {
@@ -54,6 +63,30 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
     CGFloat w=fabs(_highlightCurrent.x-_highlightStart.x);
     CGFloat h=fabs(_highlightCurrent.y-_highlightStart.y);
     return CGRectMake(x,y,w,h);
+}
+
+- (NSArray *)semanticRectsIntersectingPreview {
+    if([_pageTextRects count]==0||self.bounds.size.width<=0||self.bounds.size.height<=0) return [NSArray array];
+    CGRect selection=[self highlightPreviewRect];
+    NSMutableArray *matches=[NSMutableArray arrayWithCapacity:8];
+    for(NSString *s in _pageTextRects){
+        CGRect n=CGRectFromString(s);
+        CGRect q=CGRectMake(n.origin.x*self.bounds.size.width,n.origin.y*self.bounds.size.height,n.size.width*self.bounds.size.width,n.size.height*self.bounds.size.height);
+        if(CGRectIntersectsRect(selection,CGRectInset(q,-3.0f,-3.0f))){
+            [matches addObject:s];
+            if([matches count]>=32)break;
+        }
+    }
+    return matches;
+}
+
+- (void)drawNormalizedHighlightRects:(NSArray *)rects context:(CGContextRef)c color:(NSString *)color alpha:(CGFloat)alpha {
+    SetHighlightFill(c,color,alpha);
+    for(NSString *s in rects){
+        CGRect n=CGRectFromString(s);
+        CGRect q=CGRectMake(n.origin.x*self.bounds.size.width,n.origin.y*self.bounds.size.height,n.size.width*self.bounds.size.width,n.size.height*self.bounds.size.height);
+        CGContextFillRect(c,q);
+    }
 }
 
 - (void)drawRect:(CGRect)r {
@@ -73,20 +106,33 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
                 }
                 CGContextStrokePath(c);
             }
+        } else if([t isEqualToString:@"highlight"]){
+            NSArray *rects=[a objectForKey:@"rects"];
+            if([rects count]>0){
+                [self drawNormalizedHighlightRects:rects context:c color:[a objectForKey:@"color"] alpha:.34f];
+            } else {
+                CGRect q=CGRectFromString([a objectForKey:@"rect"]);
+                q=CGRectMake(q.origin.x*self.bounds.size.width,q.origin.y*self.bounds.size.height,q.size.width*self.bounds.size.width,q.size.height*self.bounds.size.height);
+                SetHighlightFill(c,[a objectForKey:@"color"],.34f);CGContextFillRect(c,q);
+            }
         } else {
             CGRect q=CGRectFromString([a objectForKey:@"rect"]);
             q=CGRectMake(q.origin.x*self.bounds.size.width,q.origin.y*self.bounds.size.height,q.size.width*self.bounds.size.width,q.size.height*self.bounds.size.height);
-            if([t isEqualToString:@"highlight"]){SetHighlightFill(c,[a objectForKey:@"color"],.34f);CGContextFillRect(c,q);}
-            else if([t isEqualToString:@"note"]){CGContextSetRGBFillColor(c,1,.8,.1,.9);CGContextFillEllipseInRect(c,q);}
+            if([t isEqualToString:@"note"]){CGContextSetRGBFillColor(c,1,.8,.1,.9);CGContextFillEllipseInRect(c,q);}
             else if([t isEqualToString:@"signature"]){[[UIColor darkGrayColor] set];[[a objectForKey:@"text"] drawInRect:q withFont:[UIFont italicSystemFontOfSize:22]];}
         }
     }
     if(_highlightSelectionEnabled&&_hasHighlightPreview){
-        SetHighlightFill(c,_highlightColorName,.24f);
-        CGContextFillRect(c,[self highlightPreviewRect]);
-        CGContextSetRGBStrokeColor(c,1,.55,0,.9);
-        CGContextSetLineWidth(c,1.0f);
-        CGContextStrokeRect(c,[self highlightPreviewRect]);
+        NSArray *semantic=[self semanticRectsIntersectingPreview];
+        if([semantic count]>0){
+            [self drawNormalizedHighlightRects:semantic context:c color:_highlightColorName alpha:.24f];
+        } else {
+            SetHighlightFill(c,_highlightColorName,.24f);
+            CGContextFillRect(c,[self highlightPreviewRect]);
+            CGContextSetRGBStrokeColor(c,1,.55,0,.9);
+            CGContextSetLineWidth(c,1.0f);
+            CGContextStrokeRect(c,[self highlightPreviewRect]);
+        }
     }
 }
 
@@ -103,11 +149,17 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
 - (void)touchesEnded:(NSSet*)t withEvent:(UIEvent*)e {
     if(_highlightSelectionEnabled){
         _highlightCurrent=[[t anyObject] locationInView:self];
-        CGRect q=[self highlightPreviewRect];
-        if(q.size.width>=8.0f&&q.size.height>=5.0f&&self.bounds.size.width>0&&self.bounds.size.height>0){
-            CGRect n=CGRectMake(q.origin.x/self.bounds.size.width,q.origin.y/self.bounds.size.height,q.size.width/self.bounds.size.width,q.size.height/self.bounds.size.height);
-            NSDictionary *a=[NSDictionary dictionaryWithObjectsAndKeys:@"highlight",@"type",NSStringFromCGRect(n),@"rect",_highlightColorName?_highlightColorName:@"yellow",@"color",nil];
+        NSArray *semantic=[self semanticRectsIntersectingPreview];
+        if([semantic count]>0){
+            NSDictionary *a=[NSDictionary dictionaryWithObjectsAndKeys:@"highlight",@"type",semantic,@"rects",_highlightColorName?_highlightColorName:@"yellow",@"color",nil];
             [AnnotationStore addAnnotation:a path:_pdfPath page:_page];
+        } else {
+            CGRect q=[self highlightPreviewRect];
+            if(q.size.width>=8.0f&&q.size.height>=5.0f&&self.bounds.size.width>0&&self.bounds.size.height>0){
+                CGRect n=CGRectMake(q.origin.x/self.bounds.size.width,q.origin.y/self.bounds.size.height,q.size.width/self.bounds.size.width,q.size.height/self.bounds.size.height);
+                NSDictionary *a=[NSDictionary dictionaryWithObjectsAndKeys:@"highlight",@"type",NSStringFromCGRect(n),@"rect",_highlightColorName?_highlightColorName:@"yellow",@"color",nil];
+                [AnnotationStore addAnnotation:a path:_pdfPath page:_page];
+            }
         }
         _hasHighlightPreview=NO;
         self.highlightSelectionEnabled=NO;
@@ -127,5 +179,5 @@ static void SetHighlightFill(CGContextRef c, NSString *name, CGFloat alpha) {
     _hasHighlightPreview=NO;
     [self setNeedsDisplay];
 }
-- (void)dealloc { [_pdfPath release];[_highlightColorName release];[_points release];[super dealloc]; }
+- (void)dealloc { [_pdfPath release];[_highlightColorName release];[_pageTextRects release];[_points release];[super dealloc]; }
 @end
