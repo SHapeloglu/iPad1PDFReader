@@ -13,19 +13,31 @@ Repository: `SHapeloglu/iPad1PDFReader`
 - Architecture: **armv7**
 - Memory management: **non-ARC / manual retain-release**
 - Build system: Theos
-- SDK used successfully by sibling legacy projects: **iPhoneOS 6.1 legacy SDK**
+- SDK: **iPhoneOS 6.1 legacy SDK**
 - Target line: `TARGET = iphone:clang:6.1:5.1`
 
 These constraints are architectural requirements, not optional preferences.
 
 ## Current source state
-Latest source snapshot: **v3.1.0-memorysafe**.
+Base snapshot: **v3.1.0-memorysafe**.
 
-v3.1 is a memory-safety pass over v3.0. Main changes:
+Current development head adds a low-memory reader UX pass on top of v3.1:
+- pinch zoom centering behavior revised so zoom should no longer visually jump/lean left;
+- zoom scale is preserved across previous/next page navigation;
+- approximate normalized reading position is preserved across page changes while zoomed;
+- double-tap zoom added;
+- direct page-number navigation added;
+- bookmark list navigation added;
+- page notes now contain text and support add/view/edit/delete from the Tools UI;
+- temporary bookmark/note selection arrays are purged on memory warning.
+
+These UX changes are **development head only until clean-built and tested on the physical iPad 1**.
+
+v3.1 memory policy remains unchanged:
 - one active PDF page render at a time;
 - bounded thumbnail cache (`8` small thumbnails);
 - search capped at `40` results and scanned page-by-page;
-- Reflow changed from whole-document text aggregation to **one page at a time**;
+- Reflow is **one page at a time**;
 - cache cleanup on memory warning;
 - no device-side OCR;
 - no high-resolution multi-page bitmap cache;
@@ -36,12 +48,15 @@ v3.1 is a memory-safety pass over v3.0. Main changes:
 - iTunes File Sharing / Open In support;
 - Core Graphics PDF rendering;
 - zoom and page navigation;
-- bookmarks and resume-last-page;
+- zoom persistence during page navigation (development head, pending device validation);
+- direct page-number navigation;
+- bookmarks, bookmark list, and resume-last-page;
 - thumbnails;
 - basic outline handling;
 - content-stream text extraction/search via `CGPDFScanner`;
 - memory-safe Reflow mode;
-- annotation overlay: drawing / highlight / note / simple signature;
+- annotation overlay: drawing / highlight / text note / simple signature;
+- page note add/view/edit/delete;
 - annotation flatten export to a new PDF;
 - page manager: delete/reorder/rotate/export;
 - PDF merge API;
@@ -50,7 +65,10 @@ v3.1 is a memory-safety pass over v3.0. Main changes:
 - SMB/SFTP shown as optional connectors only; external libraries are intentionally not bundled.
 
 ## Known limitations
-- v3.1.0 has **not yet been confirmed by a clean build on the user's WSL environment** after the memory-safe refactor. Treat the source as latest development head, not a proven release.
+- Current development head has **not yet been confirmed by a clean build on the user's WSL environment** after the latest reader UX changes. Treat it as development source, not a proven release.
+- Highlight placement is still basic/fixed; free selection must not be added until touch interaction with zoom/pan is proven safe.
+- Bookmark menu displays a bounded set of up to 24 entries at once.
+- Page note menu displays a bounded set of up to 20 notes at once.
 - Text extraction/search may fail or be incomplete for PDFs using complex font encodings / ToUnicode maps.
 - Outline destination-to-page resolution is partial.
 - Flattened annotations are visually permanent but are not editable Acrobat `/Annots` objects.
@@ -88,14 +106,15 @@ killall SpringBoard
 ```
 
 ## Immediate next action
-1. Clone/pull this repository on WSL.
+1. Pull the latest repository on WSL.
 2. Run:
    ```bash
    make clean
    rm -rf .theos
    make package FINALPACKAGE=1
    ```
-3. Fix only actual iOS 5.1.1 / legacy SDK compile issues without relaxing the target constraints.
-4. Install the resulting package on the iPad 1.
-5. Run the memory/stability checklist in `TESTING.md` before adding any new feature.
-6. Only after v3.1 passes real-device testing should new functionality be considered.
+3. Fix only actual iOS 5.1.1 / legacy SDK compile issues without relaxing `armv7`, iOS 5.1.1, non-ARC, Core Graphics, or memory-budget constraints.
+4. Install the resulting package on the physical iPad 1.
+5. First validate zoom centering, zoom persistence, double-tap zoom, page-number navigation, bookmarks, and page-note add/view/edit/delete.
+6. Then run the complete memory/stability checklist in `TESTING.md`.
+7. Do not add heavier features until this development head passes real-device testing.
