@@ -1,27 +1,46 @@
 # CLAUDE.md
 
-This repository targets legacy hardware. Read `AGENTS.md` and `SESSION.md` before making changes.
+Read `SESSION.md`, `ARCHITECTURE.md`, `INTEGRATION.md`, `TASKS.md`, `TESTING.md` and `AGENTS.md` before changing code.
 
 ## Core rule
 **Never trade iPad 1 stability for feature count.**
 
-Target is permanently:
-- iPad 1
-- iOS 5.1.1
+Permanent target:
+- iPad 1 / Apple A4
 - 256 MB RAM
+- iOS 5.1.1
 - armv7
-- non-ARC
+- non-ARC / MRC
+- Theos + legacy iPhoneOS6.1 SDK
+
+## Ecosystem rule
+Do not turn iPad1PDFReader into a monolith.
+
+- iPad1Files owns local file management/shared storage/Open With.
+- iPad1FTPDownloader owns FTP transfer/browse/queue/resume.
+- iPad1PDFReader owns PDF reading/search/reflow/annotation/page operations.
+
+Prefer lightweight handoff over duplicated engines.
 
 ## Coding style
-- Objective-C compatible with legacy SDK/toolchain.
-- Manual memory management.
-- Prefer Foundation/UIKit/CoreGraphics APIs present on iOS 5.
-- Avoid blocks/concurrency patterns that create uncontrolled simultaneous work.
-- Favor simple controllers and explicit ownership.
-- Keep temporary images/text short-lived.
+- legacy Objective-C compatible with iOS 5;
+- explicit manual memory ownership;
+- Foundation/UIKit/CoreGraphics first;
+- avoid uncontrolled concurrency;
+- keep temporary text/images/geometry short-lived;
+- use hard caps for lists/caches;
+- fail gracefully on unsupported PDF constructs.
 
-## Performance
-If a feature requires loading an entire large PDF, an entire book's text, or multiple full page bitmaps at once, redesign it before implementation.
+## Current development priority
+Real text highlight with fluorescent colors, page-local only.
+
+Do not create whole-document text/glyph indexes. Do not add OCR/AI. Keep region highlight as fallback for image PDFs.
 
 ## New chat continuation
-Start from `SESSION.md -> Immediate next action`.
+Always continue from:
+
+```text
+SESSION.md -> Immediate next action
+```
+
+Do not infer an older chat state if repository documentation says otherwise.
