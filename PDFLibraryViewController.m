@@ -39,7 +39,8 @@
     [self addPDFsFromDirectory:documents source:@"Uygulama" toArray:items];
     [self addPDFsFromDirectory:@"/var/mobile/Media/iPad1Files/PDFs" source:@"iPad1Files/PDFs" toArray:items];
     [self addPDFsFromDirectory:@"/var/mobile/Media/iPad1Files/Downloads" source:@"iPad1Files/Downloads" toArray:items];
-    [items sortUsingComparator:^NSComparisonResult(id a,id b){return [[[a objectForKey:@"name"] lowercaseString] compare:[[b objectForKey:@"name"] lowercaseString]];}];
+    NSSortDescriptor *sort=[[[NSSortDescriptor alloc] initWithKey:@"name" ascending:YES selector:@selector(localizedCaseInsensitiveCompare:)] autorelease];
+    [items sortUsingDescriptors:[NSArray arrayWithObject:sort]];
     [_pdfFiles release];
     _pdfFiles=[items copy];
     _emptyLabel.hidden=[items count]>0;
