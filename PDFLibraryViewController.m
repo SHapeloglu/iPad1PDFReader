@@ -62,10 +62,26 @@
     return c;
 }
 
+- (void)showPDFOpenError:(NSString *)message {
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"PDF açılamadı" message:message delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+    [a show];
+}
+
 - (BOOL)openPDFAtPath:(NSString *)path {
-    if(!path||![[[path pathExtension] lowercaseString] isEqualToString:@"pdf"]||![[NSFileManager defaultManager] fileExistsAtPath:path])return NO;
+    if(!path||![path hasPrefix:@"/"]){[self showPDFOpenError:@"Geçersiz PDF yolu."];return NO;}
+    if(![[[path pathExtension] lowercaseString] isEqualToString:@"pdf"]){[self showPDFOpenError:@"Dosya bir PDF değil."];return NO;}
+    if(![[NSFileManager defaultManager] fileExistsAtPath:path]){[self showPDFOpenError:@"PDF bulunamadı."];return NO;}
+
     [RecentStore touchPath:path];
-    [self.navigationController pushViewController:[[[PDFReaderViewController alloc] initWithPDFPath:path] autorelease] animated:YES];
+
+    /* Warm-start handoff: remove the old reader first so its CGPDFDocument,
+       active page and disposable view state can be released under MRC before
+       the new document is opened. */
+    if(self.navigationController.topViewController!=self)
+        [self.navigationController popToViewController:self animated:NO];
+
+    PDFReaderViewController *reader=[[[PDFReaderViewController alloc] initWithPDFPath:path] autorelease];
+    [self.navigationController pushViewController:reader animated:YES];
     return YES;
 }
 
@@ -82,25 +98,44 @@
     return NO;
 }
 
+- (NSString *)decodedPDFPathFromHandoffURL:(NSURL *)url {
+    if(!url)return nil;
+    if(![[[url scheme] lowercaseString] isEqualToString:@"ipad1pdf"])return nil;
+    if(![[[url host] lowercaseString] isEqualToString:@"open"])return nil;
+
+    NSString *query=[url query];
+    if(!query||[query length]==0)return nil;
+    for(NSString *pair in [query componentsSeparatedByString:@"&"]){
+        NSRange equals=[pair rangeOfString:@"="];
+        if(equals.location==NSNotFound)continue;
+        NSString *key=[pair substringToIndex:equals.location];
+        if(![key isEqualToString:@"path"])continue;
+        NSString *encoded=[pair substringFromIndex:equals.location+1];
+        NSString *decoded=[encoded stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        return decoded;
+    }
+    return nil;
+}
+
 - (void)importExternalPDFURL:(NSURL *)url {
     if(!url)return;
-    if([[url scheme] isEqualToString:@"ipad1pdf"]){
-        NSString *path=nil;
-        NSString *query=[url query];
-        for(NSString *pair in [query componentsSeparatedByString:@"&"]){
-            NSArray *parts=[pair componentsSeparatedByString:@"="];
-            if([parts count]>=2&&[[parts objectAtIndex:0] isEqualToString:@"path"]){
-                NSString *encoded=[[parts subarrayWithRange:NSMakeRange(1,[parts count]-1)] componentsJoinedByString:@"="];
-                path=[encoded stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
-                break;
-            }
-        }
+
+    if([[[url scheme] lowercaseString] isEqualToString:@"ipad1pdf"]){
+        if(![[[url host] lowercaseString] isEqualToString:@"open"]){[self showPDFOpenError:@"Geçersiz PDF açma isteği."];return;}
+        NSString *path=[self decodedPDFPathFromHandoffURL:url];
+        if(!path||[path length]==0){[self showPDFOpenError:@"PDF yolu belirtilmedi."];return;}
         [self openPDFAtPath:path];
         return;
     }
+
     if(![url isFileURL])return;
     NSString *source=[url path];
+
+    /* Shared/canonical files are always opened in place. Never duplicate
+       iPad1Files/FTPDownloader handoff files into the app sandbox. */
     if([self isStableDirectPath:source]){[self openPDFAtPath:source];return;}
+
+    /* Ordinary external Open In files may need a persistent app-owned copy. */
     NSString *dst=[[self documentsDirectory] stringByAppendingPathComponent:[source lastPathComponent]];
     if(![source isEqualToString:dst])[[NSFileManager defaultManager] copyItemAtPath:source toPath:dst error:nil];
     [self reloadPDFList];
