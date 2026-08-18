@@ -7,6 +7,9 @@
     NSString *_pdfPath; CGPDFDocumentRef _document; NSUInteger _currentPage,_pageCount;
     UIScrollView *_scrollView; PDFPageView *_pageView; AnnotationOverlayView *_overlay;
     UIToolbar *_toolbar; UILabel *_pageLabel; UIBarButtonItem *_previousButton,*_nextButton,*_bookmarkButton;
+    CGFloat _sessionZoomScale;
+    NSArray *_bookmarkSheetPages;
+    UITapGestureRecognizer *_doubleTapRecognizer;
 }
 - (id)initWithPDFPath:(NSString *)path;
 @end
