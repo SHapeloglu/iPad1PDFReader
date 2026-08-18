@@ -9,6 +9,8 @@
     UIToolbar *_toolbar; UILabel *_pageLabel; UIBarButtonItem *_previousButton,*_nextButton,*_bookmarkButton;
     CGFloat _sessionZoomScale;
     NSArray *_bookmarkSheetPages;
+    NSArray *_noteSheetIndexes;
+    NSUInteger _editingAnnotationIndex;
     UITapGestureRecognizer *_doubleTapRecognizer;
 }
 - (id)initWithPDFPath:(NSString *)path;
