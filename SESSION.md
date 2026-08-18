@@ -7,102 +7,187 @@ Repository: `SHapeloglu/iPad1PDFReader`
 
 ## Immutable target
 - Device: **iPad 1**
+- CPU: **Apple A4**
 - RAM: **256 MB total physical RAM**
-- CPU: Apple A4
 - OS: **iOS 5.1.1**
 - Architecture: **armv7**
-- Memory management: **non-ARC / manual retain-release**
-- Build system: Theos
-- SDK: **iPhoneOS 6.1 legacy SDK**
-- Target line: `TARGET = iphone:clang:6.1:5.1`
-
-These constraints are architectural requirements, not optional preferences.
-
-## Current source state
-Current development head: **v3.2 low-memory UX/integration pass** on top of `v3.1.0-memorysafe`.
-
-### Reader UX already present
-- zoom centering fix;
-- zoom scale preserved across page changes;
-- approximate normalized reading position preserved;
-- double-tap zoom;
-- direct page-number navigation;
-- bookmark list;
-- text page notes with add/view/edit/delete.
-
-### Added in v3.2 development head
-- `Belge Gezgini`: bounded document-wide bookmark/note/highlight summary;
-- summary limits: max 80 annotation-summary items, max 40 per kind;
-- serial page-by-page search with visible progress and Cancel;
-- search remains capped at 40 results and does not build a persistent document index;
-- lightweight outline destination resolution for direct `/Dest` and `/A /GoTo` array targets;
-- one-shot drag rectangle highlight; scroll is disabled only during selection and restored immediately after;
-- Page Manager now exports only on explicit `Kaydet` and always writes a new PDF;
-- iPad1Files shared storage integration:
-  - `/var/mobile/Media/iPad1Files/PDFs`
-  - `/var/mobile/Media/iPad1Files/Downloads`
-- registered receiver URL scheme:
-  `ipad1pdf://open?path=<percent-encoded-absolute-path>`;
-- shared iPad1Files PDFs open in-place without duplicate copies;
-- ordinary external `Open In` file URLs are still copied into the app Documents area when needed.
-
-## Ecosystem responsibility split
-Do not duplicate companion-app responsibilities.
-
-- **iPad1Files**: filesystem browser, copy/move/rename/delete, shared storage, Open With.
-- **iPad1FTPDownloader**: FTP browse/download/upload/queue/resume.
-- **iPad1PDFReader**: PDF rendering, navigation, search, reflow, bookmark, annotation, page management.
-
-Built-in PDFReader FTP/WebDAV code is maintenance-only. Do not expand it merely for feature parity.
-
-## Memory policy
-- one active full PDF page render at a time;
-- thumbnail cache max **8**;
-- search result cap **40**;
-- search is serial page-by-page;
-- document navigator annotation-summary cap **80**, max **40 per kind**;
-- Reflow remains page-scoped;
-- no device-side OCR;
-- no AI/ML;
-- no background full-document text index;
-- no high-resolution multi-page bitmap cache;
-- clear disposable state on memory warning;
-- no heavy SMB/SFTP/cloud SDK merely for parity.
-
-## Known limitations
-- v3.2 development head has **not yet been clean-built and physically validated after this latest batch**. Treat source as development head, not a proven release.
-- Text extraction/search may remain incomplete for complex font encodings / ToUnicode maps.
-- Outline improvement resolves lightweight direct array destinations; named destinations can still remain unresolved.
-- Drag highlight is rectangular region highlighting, not semantic PDF text selection.
-- Flattened annotations are visual output, not editable Acrobat `/Annots` objects.
-- Built-in legacy HTTP/FTP/WebDAV paths remain for compatibility but companion apps are preferred for transfer/file management.
-
-## Build environment
-Use WSL Ubuntu + Theos with legacy iPhoneOS6.1 SDK.
+- Objective-C: **non-ARC / MRC**
+- Build: **Theos**
+- SDK: **legacy iPhoneOS 6.1 SDK**
+- Makefile target must remain:
 
 ```make
 ARCHS = armv7
 TARGET = iphone:clang:6.1:5.1
 ```
 
-Do not switch to iPhoneOS9.3 SDK.
+Never modernize deployment target/frameworks merely to simplify development.
+
+## Ecosystem architecture — authoritative decision
+Three companion apps intentionally divide responsibilities so code, RAM and maintenance are not duplicated.
+
+```text
+iPad1Files
+  -> shared filesystem backbone
+  -> browse/copy/move/rename/delete/search/favorites/Open With
+
+iPad1FTPDownloader
+  -> FTP/network transfer specialist
+  -> browse/download/upload/progress/queue/resume/remote operations
+
+iPad1PDFReader
+  -> PDF specialist
+  -> render/read/search/reflow/bookmark/annotation/page management
+```
+
+### Canonical shared root
+
+```text
+/var/mobile/Media/iPad1Files
+```
+
+Important shared directories for PDFReader:
+
+```text
+/var/mobile/Media/iPad1Files/PDFs
+/var/mobile/Media/iPad1Files/Downloads
+```
+
+PDFReader must open shared PDFs **in place** where safe. Do not create duplicate physical copies just to hand a PDF between these apps.
+
+### PDF URL handoff contract
+
+```text
+ipad1pdf://open?path=<percent-encoded-absolute-path>
+```
+
+## Current development head
+Current source is a **v3.2 development head** on top of `v3.1.0-memorysafe`.
+
+Already present in source:
+- Core Graphics active-page rendering;
+- zoom centering improvement;
+- zoom scale retained between page changes;
+- approximate viewport position retention;
+- double-tap zoom;
+- direct page-number navigation;
+- bookmarks and resume-last-page;
+- bounded thumbnails;
+- page-by-page Reflow;
+- page notes add/view/edit/delete;
+- drawing, highlight-region and simple signature annotations;
+- bounded `Belge Gezgini` for bookmarks/notes/highlights;
+- search progress + cancel with max 40 retained results;
+- lightweight direct outline destination resolution;
+- explicit Page Manager save/export;
+- iPad1Files shared PDFs/Downloads discovery;
+- `ipad1pdf://` receiver registration.
+
+## Current highlight phase
+The previous drag-rectangle highlight is useful mainly for scanned/image PDFs, but it is not the desired primary UX for normal text PDFs.
+
+Target UX:
+
+```text
+select text -> Highlight -> fluorescent color
+```
+
+Planned fluorescent palette:
+- yellow;
+- green;
+- pink;
+- orange;
+- cyan/light blue.
+
+The last-used highlight color may be remembered.
+
+### Memory rule for real text highlight
+This is **Yellow**, allowed only if implemented page-by-page:
+- process only the active page;
+- do not index the whole PDF;
+- do not retain whole-document glyph/word geometry;
+- clear temporary selection geometry on page change and memory warning;
+- persist only small annotation data such as page + rect(s) + color;
+- if a PDF has no selectable text layer, do not OCR on-device; retain optional region highlight instead.
+
+Current source already contains early highlight-color support in `AnnotationOverlayView`; user-facing text-selection/color workflow is not yet considered complete or device-proven.
+
+## Next low-memory UX candidates
+After the current highlight phase and physical validation:
+- highlight color change/delete;
+- tap a note marker to open/edit it;
+- add Outline/Contents into the unified document navigation experience;
+- lightweight reading history/back-forward with a hard small cap;
+- optional left/right edge page taps if they do not conflict with zoom/annotation gestures;
+- text copy only if it can reuse the page-local text-selection work safely.
+
+## Features intentionally NOT added/grown in PDFReader
+Because companion apps own them:
+- general filesystem manager;
+- advanced copy/move/rename/favorites UI;
+- FTP client growth;
+- FTP transfer queue/resume engine;
+- general network file browser.
+
+Existing PDFReader HTTP/FTP/WebDAV code is **maintenance-only**. Do not grow it for feature parity.
+
+## Red / out of scope on-device
+- OCR engine;
+- AI/ML inference;
+- whole-document bitmap cache;
+- persistent whole-document text index;
+- high-resolution multi-page pre-rendering;
+- modern cloud SDKs;
+- heavy SMB/SFTP libraries merely for parity;
+- heavy replacement PDF engine without measured real-device proof.
+
+## Memory budgets
+- one active full PDF page render;
+- thumbnail cache max **8**;
+- search result cap **40**;
+- Belge Gezgini annotation summary max **80**, max **40 per kind**;
+- Reflow page-scoped;
+- no parallel heavy processing;
+- purge disposable state on memory warning.
+
+Preferred engineering ranges:
+- normal reading roughly **30–50 MB**;
+- special operations ideally stay well below **70–90 MB**;
+- any unbounded growth is a failure.
+
+## Current validation status
+The latest development source, including the newest highlight-color work, is **not yet a proven release** until it is clean-built and tested on the physical iPad 1.
+
+## Build environment
+WSL Ubuntu + Theos + legacy iPhoneOS6.1 SDK.
+
+```bash
+make clean
+rm -rf .theos
+make package FINALPACKAGE=1
+```
+
+Do not switch to iPhoneOS9.3 SDK; it previously caused simulator `.tbd` warnings and armv7 `liblaunch.dylib` link failure.
 
 ## Immediate next action
-1. Download/pull the latest repository source.
-2. Run:
-   ```bash
-   make clean
-   rm -rf .theos
-   make package FINALPACKAGE=1
-   ```
-3. Fix only real legacy compile problems; do **not** raise deployment target or relax memory constraints.
-4. Install on physical iPad 1.
-5. Run the new v3.2 checks in `TESTING.md`, especially:
-   - Belge Gezgini;
-   - search progress/cancel;
-   - drag highlight;
-   - outline page jump;
-   - iPad1Files shared PDFs and URL handoff;
-   - explicit Page Manager save;
-   - repeated memory/stability tests.
-6. Do not add heavier functionality until these pass real-device validation.
+1. Pull/download current `main`.
+2. Read `SESSION.md`, `ARCHITECTURE.md`, `INTEGRATION.md`, `TASKS.md`, `TESTING.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`.
+3. Finish the **page-local real text highlight + fluorescent color UX** without whole-document indexing.
+4. Keep rectangle/area highlight only as a fallback for PDFs without selectable text.
+5. Clean-build with the legacy toolchain.
+6. Fix only real legacy compile errors without changing platform constraints.
+7. Install on physical iPad 1.
+8. Run the highlight, integration and memory tests in `TESTING.md`.
+9. Do not start heavier features until this phase is stable.
+
+## New-chat starter
+Use this in a new conversation:
+
+```text
+We are continuing https://github.com/SHapeloglu/iPad1PDFReader.
+Read SESSION.md, ARCHITECTURE.md, INTEGRATION.md, TASKS.md,
+TESTING.md, AGENTS.md, CLAUDE.md and README.md before changing code.
+Continue exactly from SESSION.md -> Immediate next action.
+Preserve iPad 1 / A4 / 256 MB / iOS 5.1.1 / armv7 / non-ARC / Theos constraints.
+Do not duplicate iPad1Files or iPad1FTPDownloader responsibilities.
+```
