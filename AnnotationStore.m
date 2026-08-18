@@ -1,0 +1,7 @@
+#import "AnnotationStore.h"
+@implementation AnnotationStore
++ (NSString *)keyForPath:(NSString *)path page:(NSUInteger)page { NSString *n=[[path lastPathComponent] stringByReplacingOccurrencesOfString:@"." withString:@"_"]; return [NSString stringWithFormat:@"ann_%@_%lu",n,(unsigned long)page]; }
++ (NSArray *)annotationsForPath:(NSString *)path page:(NSUInteger)page { NSArray *a=[[NSUserDefaults standardUserDefaults] arrayForKey:[self keyForPath:path page:page]]; return a?a:[NSArray array]; }
++ (void)addAnnotation:(NSDictionary *)a path:(NSString *)path page:(NSUInteger)page { NSUserDefaults*d=[NSUserDefaults standardUserDefaults]; NSString*k=[self keyForPath:path page:page]; NSMutableArray*m=[NSMutableArray arrayWithArray:[d arrayForKey:k]?:[NSArray array]]; [m addObject:a]; [d setObject:m forKey:k]; [d synchronize]; }
++ (void)clearAnnotationsForPath:(NSString *)path page:(NSUInteger)page { NSUserDefaults*d=[NSUserDefaults standardUserDefaults]; [d removeObjectForKey:[self keyForPath:path page:page]]; [d synchronize]; }
+@end

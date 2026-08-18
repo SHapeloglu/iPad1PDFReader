@@ -1,0 +1,13 @@
+#import "AnnotationOverlayView.h"
+#import "AnnotationStore.h"
+@implementation AnnotationOverlayView
+@synthesize pdfPath=_pdfPath,page=_page,drawingEnabled=_drawingEnabled;
+- (id)initWithFrame:(CGRect)f { if((self=[super initWithFrame:f])){ self.backgroundColor=[UIColor clearColor]; self.opaque=NO; self.userInteractionEnabled=NO; _points=[[NSMutableArray alloc] init]; } return self; }
+- (void)setDrawingEnabled:(BOOL)v { _drawingEnabled=v; self.userInteractionEnabled=v; }
+- (void)reloadAnnotations { [self setNeedsDisplay]; }
+- (void)drawRect:(CGRect)r { CGContextRef c=UIGraphicsGetCurrentContext(); NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_page]; for(NSDictionary*a in anns){ NSString*t=[a objectForKey:@"type"]; if([t isEqualToString:@"draw"]){ NSArray*pts=[a objectForKey:@"points"]; if([pts count]>1){ CGContextSetRGBStrokeColor(c,0,0,1,.85); CGContextSetLineWidth(c,2); for(NSUInteger i=0;i<[pts count];i++){ CGPoint p=CGPointFromString([pts objectAtIndex:i]); p=CGPointMake(p.x*self.bounds.size.width,p.y*self.bounds.size.height); if(i==0)CGContextMoveToPoint(c,p.x,p.y); else CGContextAddLineToPoint(c,p.x,p.y);} CGContextStrokePath(c);} } else { CGRect q=CGRectFromString([a objectForKey:@"rect"]); q=CGRectMake(q.origin.x*self.bounds.size.width,q.origin.y*self.bounds.size.height,q.size.width*self.bounds.size.width,q.size.height*self.bounds.size.height); if([t isEqualToString:@"highlight"]){CGContextSetRGBFillColor(c,1,1,0,.35);CGContextFillRect(c,q);} else if([t isEqualToString:@"note"]){CGContextSetRGBFillColor(c,1,.8,.1,.9);CGContextFillEllipseInRect(c,q);} else if([t isEqualToString:@"signature"]){[[UIColor darkGrayColor] set]; [[a objectForKey:@"text"] drawInRect:q withFont:[UIFont italicSystemFontOfSize:22]];} } } }
+- (void)touchesBegan:(NSSet*)t withEvent:(UIEvent*)e { [_points removeAllObjects]; [_points addObject:NSStringFromCGPoint([[t anyObject] locationInView:self])]; }
+- (void)touchesMoved:(NSSet*)t withEvent:(UIEvent*)e { [_points addObject:NSStringFromCGPoint([[t anyObject] locationInView:self])]; [self setNeedsDisplay]; }
+- (void)touchesEnded:(NSSet*)t withEvent:(UIEvent*)e { if([_points count]>1){ NSMutableArray*n=[NSMutableArray array]; for(NSString*s in _points){CGPoint p=CGPointFromString(s);[n addObject:NSStringFromCGPoint(CGPointMake(p.x/self.bounds.size.width,p.y/self.bounds.size.height))];} [AnnotationStore addAnnotation:[NSDictionary dictionaryWithObjectsAndKeys:@"draw",@"type",n,@"points",nil] path:_pdfPath page:_page]; } [_points removeAllObjects]; [self setNeedsDisplay]; }
+- (void)dealloc { [_pdfPath release]; [_points release]; [super dealloc]; }
+@end

@@ -1,0 +1,9 @@
+Package: com.olap.ipad1pdfreader
+Name: iPad 1 PDF Reader
+Version: 3.1.0
+Architecture: iphoneos-arm
+Description: Memory-safe advanced PDF reader for iPad 1 / iOS 5.1.1
+Maintainer: OLAP
+Author: OLAP
+Section: Utilities
+Depends: firmware (>= 5.0)
