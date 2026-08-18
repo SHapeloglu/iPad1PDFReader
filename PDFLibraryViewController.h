@@ -4,4 +4,5 @@
 }
 - (void)reloadPDFList;
 - (void)importExternalPDFURL:(NSURL *)url;
+- (BOOL)openPDFAtPath:(NSString *)path;
 @end
