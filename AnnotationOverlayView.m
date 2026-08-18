@@ -1,5 +1,6 @@
 #import "AnnotationOverlayView.h"
 #import "AnnotationStore.h"
+#import <math.h>
 @implementation AnnotationOverlayView
 @synthesize pdfPath=_pdfPath,page=_page,drawingEnabled=_drawingEnabled,highlightSelectionEnabled=_highlightSelectionEnabled;
 
@@ -81,18 +82,14 @@
 
 - (void)touchesBegan:(NSSet*)t withEvent:(UIEvent*)e {
     CGPoint p=[[t anyObject] locationInView:self];
-    if(_highlightSelectionEnabled){
-        _highlightStart=p; _highlightCurrent=p; _hasHighlightPreview=YES; [self setNeedsDisplay]; return;
-    }
-    [_points removeAllObjects]; [_points addObject:NSStringFromCGPoint(p)];
+    if(_highlightSelectionEnabled){_highlightStart=p;_highlightCurrent=p;_hasHighlightPreview=YES;[self setNeedsDisplay];return;}
+    [_points removeAllObjects];[_points addObject:NSStringFromCGPoint(p)];
 }
-
 - (void)touchesMoved:(NSSet*)t withEvent:(UIEvent*)e {
     CGPoint p=[[t anyObject] locationInView:self];
     if(_highlightSelectionEnabled){_highlightCurrent=p;[self setNeedsDisplay];return;}
-    [_points addObject:NSStringFromCGPoint(p)]; [self setNeedsDisplay];
+    [_points addObject:NSStringFromCGPoint(p)];[self setNeedsDisplay];
 }
-
 - (void)touchesEnded:(NSSet*)t withEvent:(UIEvent*)e {
     if(_highlightSelectionEnabled){
         _highlightCurrent=[[t anyObject] locationInView:self];
@@ -112,15 +109,13 @@
         for(NSString*s in _points){CGPoint p=CGPointFromString(s);[n addObject:NSStringFromCGPoint(CGPointMake(p.x/self.bounds.size.width,p.y/self.bounds.size.height))];}
         [AnnotationStore addAnnotation:[NSDictionary dictionaryWithObjectsAndKeys:@"draw",@"type",n,@"points",nil] path:_pdfPath page:_page];
     }
-    [_points removeAllObjects]; [self setNeedsDisplay];
+    [_points removeAllObjects];[self setNeedsDisplay];
 }
-
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
     [_points removeAllObjects];
     if(_highlightSelectionEnabled)self.highlightSelectionEnabled=NO;
     _hasHighlightPreview=NO;
     [self setNeedsDisplay];
 }
-
-- (void)dealloc { [_pdfPath release]; [_points release]; [super dealloc]; }
+- (void)dealloc { [_pdfPath release];[_points release];[super dealloc]; }
 @end
