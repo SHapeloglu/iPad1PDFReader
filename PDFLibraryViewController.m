@@ -76,6 +76,12 @@
 
 - (void)showNetwork { [self.navigationController pushViewController:[[[NetworkCenterViewController alloc] initWithStyle:UITableViewStyleGrouped] autorelease] animated:YES]; }
 
+- (BOOL)isStableDirectPath:(NSString *)path {
+    if([path hasPrefix:@"/var/mobile/Media/iPad1Files/"])return YES;
+    if([path hasPrefix:[self documentsDirectory]])return YES;
+    return NO;
+}
+
 - (void)importExternalPDFURL:(NSURL *)url {
     if(!url)return;
     if([[url scheme] isEqualToString:@"ipad1pdf"]){
@@ -94,10 +100,11 @@
     }
     if(![url isFileURL])return;
     NSString *source=[url path];
-    if([self openPDFAtPath:source])return;
+    if([self isStableDirectPath:source]){[self openPDFAtPath:source];return;}
     NSString *dst=[[self documentsDirectory] stringByAppendingPathComponent:[source lastPathComponent]];
     if(![source isEqualToString:dst])[[NSFileManager defaultManager] copyItemAtPath:source toPath:dst error:nil];
     [self reloadPDFList];
+    [self openPDFAtPath:dst];
 }
 
 - (void)dealloc { [_pdfFiles release]; [_emptyLabel release]; [_actionIndexPath release]; [super dealloc]; }
