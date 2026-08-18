@@ -1,56 +1,77 @@
 # TASKS.md
 
-## Priority 0 — prove current v3.2 development head on real hardware
-- [ ] Clean-build with Theos + iPhoneOS6.1 legacy SDK.
-- [ ] Fix compile errors without changing `armv7`, iOS 5.1.1, or non-ARC constraints.
-- [ ] Install on iPad 1.
-- [ ] Verify launch and local PDF open.
-- [ ] Verify pinch zoom no longer visually jumps/leans left after zooming.
-- [ ] Verify page changes preserve the current zoom scale and approximate reading position.
-- [ ] Verify double-tap zoom.
-- [ ] Verify direct page-number navigation.
-- [ ] Verify `Belge Gezgini` bookmark/note/highlight lists and page jump.
-- [ ] Verify drag-to-select highlight and automatic return to normal scrolling.
-- [ ] Verify page note add/view/edit/delete.
-- [ ] Verify outline rows with direct destinations jump to the correct page.
-- [ ] Verify search progress and cancel on 100+ page PDFs; results remain capped at 40.
-- [ ] Verify iPad1Files PDFs/Downloads appear without duplicate copies.
-- [ ] Verify `ipad1pdf://open?path=...` handoff from iPad1Files.
-- [ ] Verify Page Manager only exports on explicit `Kaydet`.
-- [ ] Verify no crash on 50+ and 200+ page PDFs.
-- [ ] Verify memory warning path does not corrupt reader state.
+## Priority 0 — finish and prove current development head
+- [ ] Pull current `main` and clean-build with legacy Theos/iPhoneOS6.1 SDK.
+- [ ] Keep `ARCHS = armv7` and `TARGET = iphone:clang:6.1:5.1` unchanged.
+- [ ] Fix only actual iOS 5.1.1 / MRC compile issues.
+- [ ] Install on physical iPad 1.
+- [ ] Verify shared PDFs from iPad1Files open without duplicate copies.
+- [ ] Verify `ipad1pdf://open?path=...` handoff.
+- [ ] Verify zoom centering, zoom persistence, double-tap and page-number navigation.
+- [ ] Verify Belge Gezgini, search progress/cancel, outline page jumps and explicit Page Manager save.
 
-## Priority 1 — memory/stability validation
-- [ ] Thumbnail: scroll through 100+ pages and confirm cache remains capped at 8.
-- [ ] Reflow: confirm only page-level text is retained.
-- [ ] Rotate device repeatedly while PDF is open and confirm zoom remains usable.
-- [ ] Zoom/change pages repeatedly for 5+ minutes.
-- [ ] Open/close multiple PDFs sequentially and watch for retained memory growth.
-- [ ] Open `Belge Gezgini` repeatedly on 200+ page PDF and confirm no progressive growth.
-- [ ] Cancel repeated searches at different pages and confirm reader remains responsive.
-- [ ] Export annotated PDF and reopen it.
-- [ ] Page manager reorder/delete/rotate on a disposable test PDF.
+## Priority 1 — real text highlight + fluorescent palette
+Primary current feature phase.
 
-## Implemented but still pending physical-device proof
-- [x] Bounded document-wide bookmark/note/highlight navigator (max 80 annotation-summary items).
-- [x] Serial page-by-page search progress with cancel; max 40 results.
-- [x] Direct outline destination resolution for lightweight `/Dest` and `/A /GoTo` array targets.
-- [x] One-shot drag rectangle highlight without bitmap/text index cache.
-- [x] Explicit Page Manager save/export workflow.
-- [x] iPad1Files shared root scanning (`PDFs`, `Downloads`).
-- [x] `ipad1pdf` URL scheme receiver.
+- [ ] Implement text-selection highlight only for the active page.
+- [ ] Do not build a whole-document text/glyph index.
+- [ ] Keep temporary selection geometry bounded and clear it on page change.
+- [ ] Clear temporary selection state on memory warning.
+- [ ] Add fluorescent colors:
+  - [ ] yellow
+  - [ ] green
+  - [ ] pink
+  - [ ] orange
+  - [ ] cyan/light blue
+- [ ] Remember last-used highlight color with lightweight persistence.
+- [ ] Persist only compact highlight annotation data: page + rect(s) + color.
+- [ ] Keep rectangular region highlight as fallback for scanned/image PDFs.
+- [ ] If there is no selectable text layer, fail gracefully; never start OCR on-device.
+- [ ] Ensure flattened export preserves chosen highlight colors.
 
-## Functional follow-ups after v3.2 is stable
-- [ ] Improve search extraction for common encoded PDFs without adding a heavy PDF engine.
-- [ ] Extend outline resolution only for formats that can be handled cheaply (named destinations remain optional).
-- [ ] Add annotation delete/edit affordances for highlight only if touch UX remains reliable.
-- [ ] Keep built-in network code in maintenance mode; prefer iPad1FTPDownloader/iPad1Files integration instead of duplicating features.
+## Priority 2 — annotation/document UX after highlight is stable
+- [ ] Tap existing highlight -> change color / delete.
+- [ ] Tap note marker -> open note directly.
+- [ ] Include Outline/Contents in unified document navigation if low-cost.
+- [ ] Add bounded reading history/back-forward, hard small cap (for example 10–20 locations).
+- [ ] Consider left/right edge page taps only if they do not conflict with zoom/annotation gestures.
+- [ ] Add text copy only if it can safely reuse page-local selection state.
+
+## Priority 3 — memory/stability validation
+- [ ] 100+ page thumbnail scrolling; cache remains max 8.
+- [ ] Search results remain max 40.
+- [ ] Search/cancel repeatedly; no progressive growth.
+- [ ] Reflow remains page-local.
+- [ ] Belge Gezgini remains bounded to 80 annotation-summary items, max 40 per kind.
+- [ ] Open/close several large PDFs sequentially.
+- [ ] Zoom/page-change for 10 minutes.
+- [ ] Rotate while zoomed repeatedly.
+- [ ] Trigger memory pressure and verify temporary selection data is dropped.
+- [ ] Test 50+, 200+ page PDFs.
+
+## Companion-app boundary — do not duplicate
+### Leave to iPad1Files
+- [ ] Do not implement general copy/move/rename/delete browser features in PDFReader.
+- [ ] Do not duplicate favorites/file organization/Open With registry.
+
+### Leave to iPad1FTPDownloader
+- [ ] Do not expand FTP browsing/downloading/upload/queue/resume in PDFReader.
+- [ ] Existing PDFReader FTP/WebDAV code is maintenance-only.
 
 ## Explicitly out of scope on-device
-- [ ] Do **not** add OCR engine.
-- [ ] Do **not** add AI/ML inference.
-- [ ] Do **not** add full-document high-resolution page cache.
-- [ ] Do **not** add background full-document text indexing.
-- [ ] Do **not** add modern cloud-provider SDKs.
-- [ ] Do **not** add `libsmb2`/`libssh2` merely for parity; only revisit with a concrete need and physical RAM profiling.
-- [ ] Do **not** replace Core Graphics with a heavy PDF engine unless measured and proven safe on 256 MB RAM.
+- [ ] No OCR engine.
+- [ ] No AI/ML inference.
+- [ ] No whole-document high-resolution bitmap cache.
+- [ ] No persistent full-document text index.
+- [ ] No large background indexing service.
+- [ ] No modern cloud-provider SDKs.
+- [ ] No SMB/SFTP library merely for competitor parity.
+- [ ] No heavy replacement PDF engine without measured physical-device proof.
+
+## Definition of done
+A feature is complete only when:
+- it builds with the legacy target;
+- it runs on physical iPad 1;
+- memory use is bounded;
+- relevant `TESTING.md` checks pass;
+- docs are updated.
