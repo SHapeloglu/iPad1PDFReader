@@ -68,6 +68,17 @@
     [a show];
 }
 
+- (void)prepareOpenReaderForReplacement {
+    NSArray *stack=self.navigationController.viewControllers;
+    for(NSInteger i=(NSInteger)[stack count]-1;i>=0;i--){
+        UIViewController *vc=[stack objectAtIndex:(NSUInteger)i];
+        if([vc isKindOfClass:[PDFReaderViewController class]]){
+            [(PDFReaderViewController *)vc prepareForExternalPDFHandoff];
+            break;
+        }
+    }
+}
+
 - (BOOL)openPDFAtPath:(NSString *)path {
     if(!path||![path hasPrefix:@"/"]){[self showPDFOpenError:@"Geçersiz PDF yolu."];return NO;}
     if(![[[path pathExtension] lowercaseString] isEqualToString:@"pdf"]){[self showPDFOpenError:@"Dosya bir PDF değil."];return NO;}
@@ -75,13 +86,10 @@
 
     [RecentStore touchPath:path];
 
-    /* Warm-start handoff: explicitly drop active page/document state before
-       creating the replacement reader. This keeps peak RAM lower on iPad 1. */
-    UIViewController *top=self.navigationController.topViewController;
-    if([top isKindOfClass:[PDFReaderViewController class]])
-        [(PDFReaderViewController *)top prepareForExternalPDFHandoff];
-
-    if(top!=self)
+    /* Warm-start handoff: explicitly drop the active page/document even if a
+       reader-owned tool screen is currently on top of the navigation stack. */
+    [self prepareOpenReaderForReplacement];
+    if(self.navigationController.topViewController!=self)
         [self.navigationController popToViewController:self animated:NO];
 
     PDFReaderViewController *reader=[[[PDFReaderViewController alloc] initWithPDFPath:path] autorelease];
