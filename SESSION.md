@@ -19,102 +19,90 @@ Repository: `SHapeloglu/iPad1PDFReader`
 These constraints are architectural requirements, not optional preferences.
 
 ## Current source state
-Base snapshot: **v3.1.0-memorysafe**.
+Current development head: **v3.2 low-memory UX/integration pass** on top of `v3.1.0-memorysafe`.
 
-Current development head adds a low-memory reader UX pass on top of v3.1:
-- pinch zoom centering behavior revised so zoom should no longer visually jump/lean left;
-- zoom scale is preserved across previous/next page navigation;
-- approximate normalized reading position is preserved across page changes while zoomed;
-- double-tap zoom added;
-- direct page-number navigation added;
-- bookmark list navigation added;
-- page notes now contain text and support add/view/edit/delete from the Tools UI;
-- temporary bookmark/note selection arrays are purged on memory warning.
-
-These UX changes are **development head only until clean-built and tested on the physical iPad 1**.
-
-v3.1 memory policy remains unchanged:
-- one active PDF page render at a time;
-- bounded thumbnail cache (`8` small thumbnails);
-- search capped at `40` results and scanned page-by-page;
-- Reflow is **one page at a time**;
-- cache cleanup on memory warning;
-- no device-side OCR;
-- no high-resolution multi-page bitmap cache;
-- explicit `MemoryBudget` policy class.
-
-## Implemented feature areas
-- local PDF library;
-- iTunes File Sharing / Open In support;
-- Core Graphics PDF rendering;
-- zoom and page navigation;
-- zoom persistence during page navigation (development head, pending device validation);
+### Reader UX already present
+- zoom centering fix;
+- zoom scale preserved across page changes;
+- approximate normalized reading position preserved;
+- double-tap zoom;
 - direct page-number navigation;
-- bookmarks, bookmark list, and resume-last-page;
-- thumbnails;
-- basic outline handling;
-- content-stream text extraction/search via `CGPDFScanner`;
-- memory-safe Reflow mode;
-- annotation overlay: drawing / highlight / text note / simple signature;
-- page note add/view/edit/delete;
-- annotation flatten export to a new PDF;
-- page manager: delete/reorder/rotate/export;
-- PDF merge API;
-- HTTP/HTTPS/FTP URL import;
-- WebDAV client foundation;
-- SMB/SFTP shown as optional connectors only; external libraries are intentionally not bundled.
+- bookmark list;
+- text page notes with add/view/edit/delete.
+
+### Added in v3.2 development head
+- `Belge Gezgini`: bounded document-wide bookmark/note/highlight summary;
+- summary limits: max 80 annotation-summary items, max 40 per kind;
+- serial page-by-page search with visible progress and Cancel;
+- search remains capped at 40 results and does not build a persistent document index;
+- lightweight outline destination resolution for direct `/Dest` and `/A /GoTo` array targets;
+- one-shot drag rectangle highlight; scroll is disabled only during selection and restored immediately after;
+- Page Manager now exports only on explicit `Kaydet` and always writes a new PDF;
+- iPad1Files shared storage integration:
+  - `/var/mobile/Media/iPad1Files/PDFs`
+  - `/var/mobile/Media/iPad1Files/Downloads`
+- registered receiver URL scheme:
+  `ipad1pdf://open?path=<percent-encoded-absolute-path>`;
+- shared iPad1Files PDFs open in-place without duplicate copies;
+- ordinary external `Open In` file URLs are still copied into the app Documents area when needed.
+
+## Ecosystem responsibility split
+Do not duplicate companion-app responsibilities.
+
+- **iPad1Files**: filesystem browser, copy/move/rename/delete, shared storage, Open With.
+- **iPad1FTPDownloader**: FTP browse/download/upload/queue/resume.
+- **iPad1PDFReader**: PDF rendering, navigation, search, reflow, bookmark, annotation, page management.
+
+Built-in PDFReader FTP/WebDAV code is maintenance-only. Do not expand it merely for feature parity.
+
+## Memory policy
+- one active full PDF page render at a time;
+- thumbnail cache max **8**;
+- search result cap **40**;
+- search is serial page-by-page;
+- document navigator annotation-summary cap **80**, max **40 per kind**;
+- Reflow remains page-scoped;
+- no device-side OCR;
+- no AI/ML;
+- no background full-document text index;
+- no high-resolution multi-page bitmap cache;
+- clear disposable state on memory warning;
+- no heavy SMB/SFTP/cloud SDK merely for parity.
 
 ## Known limitations
-- Current development head has **not yet been confirmed by a clean build on the user's WSL environment** after the latest reader UX changes. Treat it as development source, not a proven release.
-- Highlight placement is still basic/fixed; free selection must not be added until touch interaction with zoom/pan is proven safe.
-- Bookmark menu displays a bounded set of up to 24 entries at once.
-- Page note menu displays a bounded set of up to 20 notes at once.
-- Text extraction/search may fail or be incomplete for PDFs using complex font encodings / ToUnicode maps.
-- Outline destination-to-page resolution is partial.
-- Flattened annotations are visually permanent but are not editable Acrobat `/Annots` objects.
-- SMB needs a lightweight `libsmb2` build; SFTP needs `libssh2`. Do not add them until RAM footprint is measured.
-- OCR must remain off-device (PC/VPS creates searchable PDFs).
+- v3.2 development head has **not yet been clean-built and physically validated after this latest batch**. Treat source as development head, not a proven release.
+- Text extraction/search may remain incomplete for complex font encodings / ToUnicode maps.
+- Outline improvement resolves lightweight direct array destinations; named destinations can still remain unresolved.
+- Drag highlight is rectangular region highlighting, not semantic PDF text selection.
+- Flattened annotations are visual output, not editable Acrobat `/Annots` objects.
+- Built-in legacy HTTP/FTP/WebDAV paths remain for compatibility but companion apps are preferred for transfer/file management.
 
-## Previously proven build environment
-User environment:
-- WSL Ubuntu
-- Theos: `~/theos`
-- Legacy SDK symlink:
-  `~/theos/sdks/iPhoneOS6.1.sdk -> ~/legacy-ios-sdks/iPhoneOS6.1-extracted/iPhoneOS6.1.sdk`
+## Build environment
+Use WSL Ubuntu + Theos with legacy iPhoneOS6.1 SDK.
 
-A previous v1 build succeeded using:
 ```make
 ARCHS = armv7
 TARGET = iphone:clang:6.1:5.1
 ```
 
-Modern iPhoneOS9.3 SDK must not be used for this project because it previously caused simulator `.tbd` link warnings and `liblaunch.dylib` armv7 link failure.
-
-## Device deployment
-Known iPad SSH address used during development: `192.168.1.2` (may change with network).
-
-Modern OpenSSH requires legacy RSA host-key opt-in:
-```bash
-scp -o HostKeyAlgorithms=+ssh-rsa <package.deb> root@192.168.1.2:/var/mobile/
-ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.2
-```
-
-Then on the iPad:
-```bash
-dpkg -i /var/mobile/<package.deb>
-killall SpringBoard
-```
+Do not switch to iPhoneOS9.3 SDK.
 
 ## Immediate next action
-1. Pull the latest repository on WSL.
+1. Download/pull the latest repository source.
 2. Run:
    ```bash
    make clean
    rm -rf .theos
    make package FINALPACKAGE=1
    ```
-3. Fix only actual iOS 5.1.1 / legacy SDK compile issues without relaxing `armv7`, iOS 5.1.1, non-ARC, Core Graphics, or memory-budget constraints.
-4. Install the resulting package on the physical iPad 1.
-5. First validate zoom centering, zoom persistence, double-tap zoom, page-number navigation, bookmarks, and page-note add/view/edit/delete.
-6. Then run the complete memory/stability checklist in `TESTING.md`.
-7. Do not add heavier features until this development head passes real-device testing.
+3. Fix only real legacy compile problems; do **not** raise deployment target or relax memory constraints.
+4. Install on physical iPad 1.
+5. Run the new v3.2 checks in `TESTING.md`, especially:
+   - Belge Gezgini;
+   - search progress/cancel;
+   - drag highlight;
+   - outline page jump;
+   - iPad1Files shared PDFs and URL handoff;
+   - explicit Page Manager save;
+   - repeated memory/stability tests.
+6. Do not add heavier functionality until these pass real-device validation.
