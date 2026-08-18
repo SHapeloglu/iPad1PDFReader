@@ -7,7 +7,6 @@
 #import "ReflowViewController.h"
 #import "PageManagerViewController.h"
 #import "PDFAnnotationExporter.h"
-#import "OutlineViewController.h"
 #import "PDFOutlineParser.h"
 
 @implementation PDFReaderViewController
@@ -164,10 +163,7 @@
 
 - (void)handleDoubleTap:(UITapGestureRecognizer *)g {
     if(g.state!=UIGestureRecognizerStateRecognized)return;
-    if(_scrollView.zoomScale>1.05f){
-        [_scrollView setZoomScale:1.0f animated:YES];
-        return;
-    }
+    if(_scrollView.zoomScale>1.05f){[_scrollView setZoomScale:1.0f animated:YES];return;}
     CGFloat target=MIN(2.5f,_scrollView.maximumZoomScale);
     CGPoint p=[g locationInView:_pageView];
     CGSize b=_scrollView.bounds.size;
@@ -175,16 +171,8 @@
     [_scrollView zoomToRect:rect animated:YES];
 }
 
-- (void)scrollViewDidZoom:(UIScrollView *)scrollView {
-    _sessionZoomScale=scrollView.zoomScale;
-    [self centerZoomedPage];
-}
-
-- (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(float)scale {
-    _sessionZoomScale=scale;
-    [self centerZoomedPage];
-}
-
+- (void)scrollViewDidZoom:(UIScrollView *)scrollView { _sessionZoomScale=scrollView.zoomScale; [self centerZoomedPage]; }
+- (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(float)scale { _sessionZoomScale=scale; [self centerZoomedPage]; }
 - (UIView *)viewForZoomingInScrollView:(UIScrollView *)s { return _pageView; }
 
 - (void)toggleBookmark {
@@ -199,22 +187,20 @@
 }
 - (void)thumbnailControllerSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
 - (void)searchControllerSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
+- (void)outlineControllerSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
+- (void)documentNavigatorSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
 
 - (void)showBookmarks {
     [_bookmarkSheetPages release];
     _bookmarkSheetPages=[[BookmarkStore bookmarksForPath:_pdfPath] copy];
     if([_bookmarkSheetPages count]==0){
-        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Yer İmleri" message:@"Henüz yer imi yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
-        [a show];
-        return;
+        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Yer İmleri" message:@"Henüz yer imi yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];return;
     }
     UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Yer İmleri" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
     s.tag=101;
     NSUInteger count=MIN((NSUInteger)24,[_bookmarkSheetPages count]);
     for(NSUInteger i=0;i<count;i++) [s addButtonWithTitle:[NSString stringWithFormat:@"Sayfa %@",[_bookmarkSheetPages objectAtIndex:i]]];
-    [s addButtonWithTitle:@"İptal"];
-    s.cancelButtonIndex=[s numberOfButtons]-1;
-    [s showFromToolbar:_toolbar];
+    [s addButtonWithTitle:@"İptal"]; s.cancelButtonIndex=[s numberOfButtons]-1; [s showFromToolbar:_toolbar];
 }
 
 - (void)showPageNotes {
@@ -232,30 +218,26 @@
         [s addButtonWithTitle:text];
         if([indexes count]>=20)break;
     }
-    if([indexes count]==0){
-        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfa Notları" message:@"Bu sayfada not yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
-        [a show];
-        return;
-    }
-    [_noteSheetIndexes release];
-    _noteSheetIndexes=[indexes copy];
-    [s addButtonWithTitle:@"İptal"];
-    s.cancelButtonIndex=[s numberOfButtons]-1;
-    [s showFromToolbar:_toolbar];
+    if([indexes count]==0){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfa Notları" message:@"Bu sayfada not yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];return;}
+    [_noteSheetIndexes release]; _noteSheetIndexes=[indexes copy];
+    [s addButtonWithTitle:@"İptal"]; s.cancelButtonIndex=[s numberOfButtons]-1; [s showFromToolbar:_toolbar];
+}
+
+- (void)showDocumentNavigator {
+    DocumentNavigatorViewController *v=[[[DocumentNavigatorViewController alloc] initWithPDFPath:_pdfPath pageCount:_pageCount] autorelease];
+    v.delegate=self;
+    [self.navigationController pushViewController:v animated:YES];
 }
 
 - (void)showTools {
-    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Araçlar" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:@"Ara",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
-    s.tag=100;
-    [s showFromToolbar:_toolbar];
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Araçlar" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:
+                      @"Ara",@"Belge Gezgini",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight Seç",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
+    s.tag=100; [s showFromToolbar:_toolbar];
 }
 
 - (void)actionSheet:(UIActionSheet *)s clickedButtonAtIndex:(NSInteger)b {
     if(s.tag==101){
-        if(b>=0&&(NSUInteger)b<[_bookmarkSheetPages count]&&(NSUInteger)b<24){
-            NSUInteger p=[[_bookmarkSheetPages objectAtIndex:(NSUInteger)b] unsignedIntegerValue];
-            if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];}
-        }
+        if(b>=0&&(NSUInteger)b<[_bookmarkSheetPages count]&&(NSUInteger)b<24){NSUInteger p=[[_bookmarkSheetPages objectAtIndex:(NSUInteger)b] unsignedIntegerValue];if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];}}
         return;
     }
     if(s.tag==102){
@@ -265,9 +247,7 @@
             if(_editingAnnotationIndex<[anns count]){
                 NSDictionary *d=[anns objectAtIndex:_editingAnnotationIndex];
                 NSString *text=[d objectForKey:@"text"]?:@"";
-                UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Not" message:text delegate:self cancelButtonTitle:@"Kapat" otherButtonTitles:@"Düzenle",@"Sil",nil] autorelease];
-                a.tag=40;
-                [a show];
+                UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Not" message:text delegate:self cancelButtonTitle:@"Kapat" otherButtonTitles:@"Düzenle",@"Sil",nil] autorelease];a.tag=40;[a show];
             }
         }
         return;
@@ -275,17 +255,18 @@
     if(s.tag!=100)return;
 
     if(b==0){SearchViewController *v=[[[SearchViewController alloc] initWithPDFPath:_pdfPath] autorelease];v.delegate=self;[self.navigationController pushViewController:v animated:YES];}
-    else if(b==1)[self.navigationController pushViewController:[[[ReflowViewController alloc] initWithPDFPath:_pdfPath] autorelease] animated:YES];
-    else if(b==2)[self.navigationController pushViewController:[[[OutlineViewController alloc] initWithItems:[PDFOutlineParser outlineForDocument:_document]] autorelease] animated:YES];
-    else if(b==3){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfaya Git" message:[NSString stringWithFormat:@"1 - %lu",(unsigned long)_pageCount] delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Git",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setKeyboardType:UIKeyboardTypeNumberPad];a.tag=31;[a show];}
-    else if(b==4)[self showBookmarks];
-    else if(b==5)_overlay.drawingEnabled=!_overlay.drawingEnabled;
-    else if(b==6){NSDictionary *a=[NSDictionary dictionaryWithObjectsAndKeys:@"highlight",@"type",NSStringFromCGRect(CGRectMake(.15,.35,.70,.10)),@"rect",nil];[AnnotationStore addAnnotation:a path:_pdfPath page:_currentPage];[_overlay reloadAnnotations];}
-    else if(b==7){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfa Notu" message:@"Bu not yalnızca mevcut sayfaya bağlıdır." delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=32;[a show];}
-    else if(b==8)[self showPageNotes];
-    else if(b==9){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"İmza" message:nil delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=30;[a show];}
-    else if(b==10)[self.navigationController pushViewController:[[[PageManagerViewController alloc] initWithPDFPath:_pdfPath] autorelease] animated:YES];
-    else if(b==11){NSString *out=[[_pdfPath stringByDeletingLastPathComponent] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-annotated.pdf",[[_pdfPath lastPathComponent] stringByDeletingPathExtension]]];BOOL ok=[PDFAnnotationExporter exportFlattenedPDFAtPath:_pdfPath toPath:out];UIAlertView *a=[[[UIAlertView alloc] initWithTitle:ok?@"Hazır":@"Hata" message:ok?@"Yeni PDF oluşturuldu.":@"Dışa aktarılamadı." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];}
+    else if(b==1)[self showDocumentNavigator];
+    else if(b==2)[self.navigationController pushViewController:[[[ReflowViewController alloc] initWithPDFPath:_pdfPath] autorelease] animated:YES];
+    else if(b==3){OutlineViewController *v=[[[OutlineViewController alloc] initWithItems:[PDFOutlineParser outlineForDocument:_document]] autorelease];v.delegate=self;[self.navigationController pushViewController:v animated:YES];}
+    else if(b==4){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfaya Git" message:[NSString stringWithFormat:@"1 - %lu",(unsigned long)_pageCount] delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Git",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setKeyboardType:UIKeyboardTypeNumberPad];a.tag=31;[a show];}
+    else if(b==5)[self showBookmarks];
+    else if(b==6){_overlay.highlightSelectionEnabled=NO;_overlay.drawingEnabled=!_overlay.drawingEnabled;}
+    else if(b==7){_overlay.drawingEnabled=NO;_overlay.highlightSelectionEnabled=YES;UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Highlight" message:@"Vurgulamak istediğiniz alan üzerinde parmağınızı sürükleyin. Seçimden sonra normal kaydırma otomatik geri gelir." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];}
+    else if(b==8){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfa Notu" message:@"Bu not yalnızca mevcut sayfaya bağlıdır." delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=32;[a show];}
+    else if(b==9)[self showPageNotes];
+    else if(b==10){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"İmza" message:nil delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=30;[a show];}
+    else if(b==11)[self.navigationController pushViewController:[[[PageManagerViewController alloc] initWithPDFPath:_pdfPath] autorelease] animated:YES];
+    else if(b==12){NSString *out=[[_pdfPath stringByDeletingLastPathComponent] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-annotated.pdf",[[_pdfPath lastPathComponent] stringByDeletingPathExtension]]];BOOL ok=[PDFAnnotationExporter exportFlattenedPDFAtPath:_pdfPath toPath:out];UIAlertView *a=[[[UIAlertView alloc] initWithTitle:ok?@"Hazır":@"Hata" message:ok?@"Yeni PDF oluşturuldu.":@"Dışa aktarılamadı." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];}
 }
 
 - (void)alertView:(UIAlertView *)a clickedButtonAtIndex:(NSInteger)b {
@@ -309,15 +290,10 @@
             if(_editingAnnotationIndex<[anns count]){
                 NSDictionary *d=[anns objectAtIndex:_editingAnnotationIndex];
                 UIAlertView *e=[[[UIAlertView alloc] initWithTitle:@"Notu Düzenle" message:nil delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Kaydet",nil] autorelease];
-                e.alertViewStyle=UIAlertViewStylePlainTextInput;
-                [e textFieldAtIndex:0].text=[d objectForKey:@"text"]?:@"";
-                e.tag=41;
-                [e show];
+                e.alertViewStyle=UIAlertViewStylePlainTextInput; [e textFieldAtIndex:0].text=[d objectForKey:@"text"]?:@""; e.tag=41; [e show];
             }
         } else if(b==2&&_editingAnnotationIndex!=NSNotFound){
-            [AnnotationStore removeAnnotationAtIndex:_editingAnnotationIndex path:_pdfPath page:_currentPage];
-            _editingAnnotationIndex=NSNotFound;
-            [_overlay reloadAnnotations];
+            [AnnotationStore removeAnnotationAtIndex:_editingAnnotationIndex path:_pdfPath page:_currentPage]; _editingAnnotationIndex=NSNotFound; [_overlay reloadAnnotations];
         }
     }
     else if(a.tag==41&&b==1&&_editingAnnotationIndex!=NSNotFound){
@@ -326,8 +302,7 @@
             NSDictionary *old=[anns objectAtIndex:_editingAnnotationIndex];
             NSString *txt=[[a textFieldAtIndex:0] text]?:@"";
             NSDictionary *d=[NSDictionary dictionaryWithObjectsAndKeys:@"note",@"type",txt,@"text",[old objectForKey:@"rect"]?:NSStringFromCGRect(CGRectMake(.05,.05,.04,.04)),@"rect",nil];
-            [AnnotationStore replaceAnnotationAtIndex:_editingAnnotationIndex withAnnotation:d path:_pdfPath page:_currentPage];
-            [_overlay reloadAnnotations];
+            [AnnotationStore replaceAnnotationAtIndex:_editingAnnotationIndex withAnnotation:d path:_pdfPath page:_currentPage]; [_overlay reloadAnnotations];
         }
         _editingAnnotationIndex=NSNotFound;
     }
@@ -337,6 +312,7 @@
     [super didReceiveMemoryWarning];
     [_bookmarkSheetPages release]; _bookmarkSheetPages=nil;
     [_noteSheetIndexes release]; _noteSheetIndexes=nil;
+    _overlay.highlightSelectionEnabled=NO;
     if(!self.view.window)_pageView.pdfPage=NULL;
 }
 
