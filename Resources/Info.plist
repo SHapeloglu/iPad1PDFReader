@@ -7,11 +7,15 @@
 <key>CFBundleIdentifier</key><string>com.olap.ipad1pdfreader</string>
 <key>CFBundleName</key><string>iPad1PDFReader</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>3.1.0</string>
-<key>CFBundleVersion</key><string>31</string>
+<key>CFBundleShortVersionString</key><string>3.2.0</string>
+<key>CFBundleVersion</key><string>32</string>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UIDeviceFamily</key><array><integer>2</integer></array>
 <key>UIFileSharingEnabled</key><true/>
+<key>CFBundleURLTypes</key><array><dict>
+<key>CFBundleURLName</key><string>com.olap.ipad1pdfreader.open</string>
+<key>CFBundleURLSchemes</key><array><string>ipad1pdf</string></array>
+</dict></array>
 <key>CFBundleDocumentTypes</key><array><dict>
 <key>CFBundleTypeName</key><string>PDF Document</string>
 <key>CFBundleTypeRole</key><string>Viewer</string>
