@@ -1,71 +1,150 @@
 # ARCHITECTURE.md
 
 ## Goal
-Build the most capable PDF/document reader practical on an **original iPad 1 with 256 MB RAM and iOS 5.1.1**, without sacrificing stability for feature count.
+Build the most capable PDF reader practical on an **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** without sacrificing stability for feature count.
 
-## Architecture principles
+## Immutable platform
 
-### 1. Device limits are the primary design constraint
-Every feature must be classified before implementation:
-- **Green:** low-memory, incremental, safe by design.
-- **Yellow:** allowed only with hard bounds / serial processing / page-level work.
-- **Red:** reject for on-device implementation.
+```make
+ARCHS = armv7
+TARGET = iphone:clang:6.1:5.1
+```
+
+- non-ARC / manual retain-release;
+- Theos;
+- legacy iPhoneOS 6.1 SDK;
+- no post-iOS-5 dependency unless optional and runtime-guarded.
+
+## Feature classification
+Before implementation every feature is classified:
+
+- **Green**: low-memory, incremental, safe by design.
+- **Yellow**: useful but requires hard bounds, page-local processing and physical-device profiling.
+- **Red**: reject for on-device implementation.
 
 Red examples:
-- device-side OCR;
-- AI/ML inference;
+- OCR;
+- AI/ML;
 - whole-document bitmap rendering;
-- large image/page caches;
-- persistent full-document text indexing;
-- heavy modern PDF engines/cloud SDKs with unknown footprint.
+- persistent full-document text indexes;
+- high-resolution multi-page caches;
+- heavy cloud SDKs;
+- heavy PDF engine replacement without measured proof.
 
-### 2. Rendering
-`PDFPageView` uses Core Graphics / `CGPDFDocument` and renders the active page only.
-Never keep multiple full-resolution page bitmaps.
+## Rendering
+`PDFPageView` uses Core Graphics / `CGPDFDocument`.
 
-### 3. Thumbnails
+Rules:
+- render one active full page at a time;
+- never pre-render an entire document;
+- never retain several full-resolution page bitmaps;
+- purge disposable state on memory warning.
+
+## Thumbnails
 `ThumbnailViewController` is lazy and bounded.
-- max cached thumbnails: **8**;
-- purge on memory warning.
 
-### 4. Search
-`PDFTextExtractor` scans content streams with `CGPDFScanner`.
-`SearchViewController` processes one page per run-loop step so the user can see progress and cancel.
-- page-by-page only;
-- no resident global index;
-- max retained results: **40**.
-
-### 5. Reflow
-Reflow is page-scoped. Never concatenate the whole document into one large string.
-
-### 6. Annotations
-`AnnotationStore` + `AnnotationOverlayView` provide lightweight drawing, rectangular highlight, text notes and simple signatures.
-Highlight selection is one-shot: scroll is disabled only while the selection is being drawn, then restored.
-`PDFAnnotationExporter` flattens visible annotations into a new PDF instead of building heavy editable `/Annots` structures.
-
-### 7. Document navigation
-`DocumentNavigatorViewController` summarizes bookmarks, notes and highlights without indexing PDF text.
-Memory limits:
-- max annotation-summary items: **80**;
-- max per kind: **40**.
-
-`PDFOutlineParser` resolves lightweight direct outline destinations when possible. Unresolved/named destinations must fail gracefully.
-
-### 8. Page operations
-`PageManager` / `PageManagerViewController` reorder/delete/rotate and export to a **new PDF**. No in-place source mutation. Export occurs only after explicit user save.
-
-### 9. Companion-app responsibility boundary
-The iPad1 application family is intentionally modular:
+Hard cache limit:
 
 ```text
-iPad1Files          -> shared filesystem, copy/move/rename/delete, Open With
-iPad1FTPDownloader  -> FTP browse/download/upload/queue/resume
-iPad1PDFReader      -> PDF reading/search/reflow/annotation/page management
+8 thumbnails
 ```
+
+## Search
+`PDFTextExtractor` / `SearchViewController` use serial page-by-page extraction.
+
+Rules:
+- one page per incremental step;
+- visible progress;
+- user cancellation;
+- no resident document-wide text index;
+- max retained results: **40**.
+
+## Reflow
+Reflow is page-scoped. Never concatenate the entire document into one large string.
+
+## Annotation architecture
+`AnnotationStore` persists lightweight dictionaries and `AnnotationOverlayView` draws them.
+
+Supported/lightweight families:
+- drawing;
+- note;
+- simple signature;
+- region highlight;
+- planned page-local semantic text highlight.
+
+### Real text highlight
+Real text highlight is **Yellow**.
+
+Allowed design:
+- extract/select only active-page text geometry;
+- discard temporary selection geometry on page change/memory warning;
+- persist only page + compact rect list + fluorescent color;
+- no whole-document pre-indexing;
+- no OCR fallback on-device.
+
+Fluorescent palette target:
+- yellow;
+- green;
+- pink;
+- orange;
+- cyan/light blue.
+
+Region highlight remains a fallback for image-only/scanned PDFs.
+
+`PDFAnnotationExporter` should continue producing a new flattened PDF rather than implementing a heavy editable `/Annots` engine unless future profiling proves otherwise.
+
+## Document navigation
+`DocumentNavigatorViewController` provides bounded navigation across annotations/bookmarks.
+
+Hard limits:
+- max annotation-summary items: **80**;
+- max **40 per kind**.
+
+Outline resolution should remain lightweight and fail gracefully for unsupported named destinations.
+
+## Page operations
+`PageManager` / `PageManagerViewController`:
+- reorder;
+- delete;
+- rotate;
+- export to a **new PDF**;
+- never silently mutate the original;
+- export only after explicit save.
+
+## Ecosystem boundary
+The application family is intentionally modular:
+
+```text
+iPad1Files          -> filesystem backbone
+iPad1FTPDownloader  -> FTP/network transfer specialist
+iPad1PDFReader      -> PDF specialist
+```
+
+### iPad1Files owns
+- browse/copy/move/rename/delete;
+- shared folders;
+- favorites;
+- Open With;
+- file classification/organization.
+
+### iPad1FTPDownloader owns
+- FTP remote browse;
+- download/upload;
+- queue/resume/progress/speed;
+- saved servers;
+- remote file commands.
+
+### iPad1PDFReader owns
+- PDF rendering/read UX;
+- search/reflow;
+- bookmark/outline;
+- annotations;
+- page management/export.
 
 Do not duplicate companion-app engines inside PDFReader.
 
-Canonical shared root owned by iPad1Files:
+## Shared storage
+Canonical root:
 
 ```text
 /var/mobile/Media/iPad1Files
@@ -78,45 +157,51 @@ PDFReader directly scans:
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
-Cross-app handoff contract:
+Cross-app contract:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-Shared files are opened in-place when safe; they are not copied merely to enter PDFReader.
+Shared files open in-place where safe; avoid duplicate physical copies.
 
-### 10. Networking
-Existing built-in HTTP/FTP/WebDAV code is retained for compatibility/maintenance, but **feature growth belongs in companion apps** where possible.
-Do not add SMB/SFTP libraries merely for parity. Revisit only for a concrete requirement and measured physical-device RAM impact.
+## Networking
+Existing HTTP/FTP/WebDAV code in PDFReader is **maintenance-only**.
 
-### 11. OCR / AI
-OCR and AI/ML are **out of scope on-device**.
-If a document needs OCR, prepare a searchable PDF on PC/VPS first.
+Do not expand it merely for feature parity. Prefer iPad1FTPDownloader/iPad1Files handoff.
 
-### 12. Memory management
-Project is non-ARC / MRC.
-- preserve manual retain/release;
-- use local autorelease pools around repeated temporary work;
-- clear disposable state on memory warning;
-- avoid parallel heavy work;
-- do not migrate to ARC or raise deployment target.
+SMB/SFTP libraries are not bundled unless a future concrete need plus real iPad RAM profiling justifies them.
+
+## Memory management
+Project is MRC.
+
+Rules:
+- explicit ownership;
+- release temporary objects aggressively;
+- local autorelease pools around repeated temporary work;
+- no uncontrolled parallel heavy work;
+- clear temporary text/geometry/list data on memory warning;
+- never raise deployment target to solve coding convenience.
+
+## Engineering RAM targets
+- normal reading roughly **30–50 MB preferred**;
+- special operations ideally remain well below **70–90 MB**;
+- sustained unbounded growth fails testing.
 
 ## Main components
-- `AppDelegate` — bootstrap and URL/Open In handoff.
-- `PDFLibraryViewController` — app Documents + iPad1Files shared PDF discovery.
+- `AppDelegate` — bootstrap + URL/Open In handoff.
+- `PDFLibraryViewController` — local/shared PDF discovery.
 - `PDFReaderViewController` — reader orchestration.
-- `PDFPageView` — active-page Core Graphics rendering.
-- `BookmarkStore` — last page + bookmark state.
-- `RecentStore` — recent/favorite paths.
-- `AppearanceStore` — reading theme state.
-- `ThumbnailViewController` — bounded lazy thumbnails.
-- `PDFTextExtractor` / `SearchViewController` — page-level cancellable search.
-- `ReflowViewController` — single-page text mode.
+- `PDFPageView` — active-page rendering.
+- `BookmarkStore` — bookmark/last-page state.
+- `AppearanceStore` — reading appearance.
+- `ThumbnailViewController` — bounded thumbnails.
+- `PDFTextExtractor` / `SearchViewController` — incremental search.
+- `ReflowViewController` — page-local reflow.
 - `AnnotationStore` / `AnnotationOverlayView` — lightweight annotations.
-- `DocumentNavigatorViewController` — bounded bookmark/note/highlight summary.
-- `PDFAnnotationExporter` — flattened annotation export.
-- `PageManager` / `PageManagerViewController` — safe copy-based page operations.
-- `PDFOutlineParser` / `OutlineViewController` — outline support and page jump.
-- `URLImportViewController`, `WebDAVClient`, `NetworkCenterViewController` — legacy network compatibility.
+- `DocumentNavigatorViewController` — bounded document navigation.
+- `PDFAnnotationExporter` — flattened export.
+- `PageManager` / `PageManagerViewController` — safe page operations.
+- `PDFOutlineParser` / `OutlineViewController` — outline handling.
+- legacy network classes — compatibility only.
 - `MemoryBudget` — explicit iPad 1 limits.
