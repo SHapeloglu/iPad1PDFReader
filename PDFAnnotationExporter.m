@@ -11,15 +11,69 @@ static void SetExportHighlightFill(CGContextRef c, NSString *name) {
     else CGContextSetRGBFillColor(c,1.0f,1.0f,.10f,.34f);
 }
 
+static CGRect PDFRectFromNormalizedOverlayRect(CGRect r, CGRect box) {
+    CGFloat x=box.origin.x+r.origin.x*box.size.width;
+    CGFloat y=box.origin.y+(1.0f-r.origin.y-r.size.height)*box.size.height;
+    CGFloat w=r.size.width*box.size.width;
+    CGFloat h=r.size.height*box.size.height;
+    return CGRectMake(x,y,w,h);
+}
+
+static void DrawHighlightAnnotation(CGContextRef c, NSDictionary *a, CGRect box) {
+    SetExportHighlightFill(c,[a objectForKey:@"color"]);
+    NSArray *rects=[a objectForKey:@"rects"];
+    if([rects count]>0){
+        NSUInteger count=MIN((NSUInteger)32,[rects count]);
+        for(NSUInteger i=0;i<count;i++){
+            CGRect r=CGRectFromString([rects objectAtIndex:i]);
+            CGContextFillRect(c,PDFRectFromNormalizedOverlayRect(r,box));
+        }
+        return;
+    }
+    NSString *legacy=[a objectForKey:@"rect"];
+    if([legacy length]>0){
+        CGRect r=CGRectFromString(legacy);
+        CGContextFillRect(c,PDFRectFromNormalizedOverlayRect(r,box));
+    }
+}
+
 @implementation PDFAnnotationExporter
 + (BOOL)exportFlattenedPDFAtPath:(NSString *)path toPath:(NSString *)outPath {
-    CGPDFDocumentRef d=CGPDFDocumentCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path]); if(!d)return NO;
-    CGContextRef c=CGPDFContextCreateWithURL((CFURLRef)[NSURL fileURLWithPath:outPath],NULL,NULL); if(!c){CGPDFDocumentRelease(d);return NO;}
+    CGPDFDocumentRef d=CGPDFDocumentCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path]);
+    if(!d)return NO;
+    CGContextRef c=CGPDFContextCreateWithURL((CFURLRef)[NSURL fileURLWithPath:outPath],NULL,NULL);
+    if(!c){CGPDFDocumentRelease(d);return NO;}
+
     size_t count=CGPDFDocumentGetNumberOfPages(d);
-    for(size_t i=1;i<=count;i++){ CGPDFPageRef p=CGPDFDocumentGetPage(d,i); CGRect box=CGPDFPageGetBoxRect(p,kCGPDFMediaBox); CGPDFContextBeginPage(c,NULL); CGContextDrawPDFPage(c,p);
-        for(NSDictionary *a in [AnnotationStore annotationsForPath:path page:i]){ NSString *type=[a objectForKey:@"type"]; if([type isEqualToString:@"highlight"]){CGRect r=CGRectFromString([a objectForKey:@"rect"]);CGRect q=CGRectMake(r.origin.x*box.size.width,r.origin.y*box.size.height,r.size.width*box.size.width,r.size.height*box.size.height);SetExportHighlightFill(c,[a objectForKey:@"color"]);CGContextFillRect(c,q);} else if([type isEqualToString:@"draw"]){NSArray *pts=[a objectForKey:@"points"];CGContextSetRGBStrokeColor(c,0,0,1,.9);CGContextSetLineWidth(c,2);for(NSUInteger k=0;k<[pts count];k++){CGPoint pt=CGPointFromString([pts objectAtIndex:k]);CGFloat x=pt.x*box.size.width,y=pt.y*box.size.height;if(k==0)CGContextMoveToPoint(c,x,y);else CGContextAddLineToPoint(c,x,y);}CGContextStrokePath(c);} }
+    for(size_t i=1;i<=count;i++){
+        CGPDFPageRef p=CGPDFDocumentGetPage(d,i);
+        CGRect box=CGPDFPageGetBoxRect(p,kCGPDFMediaBox);
+        CGPDFContextBeginPage(c,NULL);
+        CGContextDrawPDFPage(c,p);
+
+        NSArray *annotations=[AnnotationStore annotationsForPath:path page:i];
+        for(NSDictionary *a in annotations){
+            NSString *type=[a objectForKey:@"type"];
+            if([type isEqualToString:@"highlight"]){
+                DrawHighlightAnnotation(c,a,box);
+            } else if([type isEqualToString:@"draw"]){
+                NSArray *pts=[a objectForKey:@"points"];
+                CGContextSetRGBStrokeColor(c,0,0,1,.9);
+                CGContextSetLineWidth(c,2);
+                for(NSUInteger k=0;k<[pts count];k++){
+                    CGPoint pt=CGPointFromString([pts objectAtIndex:k]);
+                    CGFloat x=box.origin.x+pt.x*box.size.width;
+                    CGFloat y=box.origin.y+(1.0f-pt.y)*box.size.height;
+                    if(k==0)CGContextMoveToPoint(c,x,y);else CGContextAddLineToPoint(c,x,y);
+                }
+                CGContextStrokePath(c);
+            }
+        }
         CGPDFContextEndPage(c);
     }
-    CGPDFContextClose(c); CGContextRelease(c); CGPDFDocumentRelease(d); return YES;
+    CGPDFContextClose(c);
+    CGContextRelease(c);
+    CGPDFDocumentRelease(d);
+    return YES;
 }
 @end
