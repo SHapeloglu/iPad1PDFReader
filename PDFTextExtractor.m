@@ -1,4 +1,5 @@
 #import "PDFTextExtractor.h"
+#import <math.h>
 
 typedef struct {
     NSMutableString *text;
@@ -131,7 +132,7 @@ static void Op_TJ(CGPDFScannerRef scanner, void *info) {
     for(size_t i=0;i<n;i++) {
         CGPDFStringRef s=NULL;
         if(CGPDFArrayGetString(a,i,&s)) { AppendPDFString(s,state); AddTextRectForString(s,state); }
-        if([state->rects count]>=state->maxRects) break;
+        if(state->rects&&[state->rects count]>=state->maxRects) break;
     }
 }
 
@@ -171,9 +172,10 @@ static void ScanPage(CGPDFPageRef page, PDFTextState *state) {
 
 + (NSArray *)normalizedTextRectsForPage:(CGPDFPageRef)page maxRects:(NSUInteger)maxRects {
     if(!page||maxRects==0) return [NSArray array];
-    NSMutableArray *rects=[NSMutableArray arrayWithCapacity:MIN(maxRects,(NSUInteger)160)];
+    NSUInteger hardLimit=MIN(maxRects,(NSUInteger)160);
+    NSMutableArray *rects=[NSMutableArray arrayWithCapacity:hardLimit];
     PDFTextState state;
-    state.text=[NSMutableString string]; state.rects=rects; state.maxRects=maxRects; state.page=page;
+    state.text=[NSMutableString string]; state.rects=rects; state.maxRects=hardLimit; state.page=page;
     state.mediaBox=CGPDFPageGetBoxRect(page,kCGPDFMediaBox);
     state.textMatrix=CGAffineTransformIdentity; state.lineMatrix=CGAffineTransformIdentity;
     state.fontSize=12.0f; state.leading=12.0f; state.horizontalScale=1.0f; state.rise=0.0f;
