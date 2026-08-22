@@ -75,7 +75,7 @@ static void Op_Tf(CGPDFScannerRef scanner, void *info) {
     PDFTextState *state=(PDFTextState *)info;
     CGPDFReal size=0;
     if(CGPDFScannerPopNumber(scanner,&size)) state->fontSize=MAX(4.0f,(CGFloat)fabs(size));
-    CGPDFName name=NULL; CGPDFScannerPopName(scanner,&name);
+    const char *name=NULL; CGPDFScannerPopName(scanner,&name);
 }
 static void Op_Tm(CGPDFScannerRef scanner, void *info) {
     PDFTextState *state=(PDFTextState *)info;
