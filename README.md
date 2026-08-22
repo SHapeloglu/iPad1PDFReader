@@ -7,7 +7,15 @@ The project deliberately prioritizes **stability, bounded memory and clear respo
 ## Current development state
 Current source is a **v3.2 development head** on top of `v3.1.0-memorysafe`.
 
-It must still be clean-built and validated on the physical iPad 1 after the latest highlight/integration work. See `SESSION.md`.
+The active development work is on:
+
+```text
+feature/page-local-text-highlight
+```
+
+It must still be clean-built and validated on the physical iPad 1 after the latest highlight/integration work.
+
+For development continuation, **`SESSION.md` is the single authoritative handoff document**.
 
 ## Ecosystem
 This app is one part of a three-app iPad 1 ecosystem:
@@ -62,56 +70,32 @@ Shared PDFs should be opened in-place where safe instead of creating unnecessary
 - drawing;
 - page notes;
 - region highlight;
+- page-local text-aware highlight development;
+- five fluorescent highlight colors;
 - simple signature;
 - flattened annotation export;
 - page reorder/delete/rotate/export;
-- PDF merge infrastructure;
 - iTunes File Sharing / Open In;
-- iPad1Files shared-storage handoff.
-
-## Current feature phase: better highlight UX
-The desired normal-text workflow is:
-
-```text
-select text -> Highlight -> fluorescent color
-```
-
-Target colors:
-- yellow;
-- green;
-- pink;
-- orange;
-- cyan/light blue.
-
-For scanned/image-only PDFs with no text layer, region highlight remains the lightweight fallback.
-
-Real text highlight must remain page-local; no whole-document text/glyph index is allowed.
+- iPad1Files shared-storage handoff;
+- cold/warm `ipad1pdf://` handoff with MRC cleanup.
 
 ## Memory policy
-Hard rules:
+Hard rules include:
 - one active full page render;
 - thumbnail cache max **8**;
 - search results max **40**;
-- search page-by-page;
-- Reflow page-by-page;
-- Belge Gezgini annotation summary max **80**, max **40 per kind**;
+- search/Reflow page-by-page;
 - no whole-document bitmap cache;
 - no persistent whole-document text index;
 - no on-device OCR;
 - no AI/ML;
-- no uncontrolled parallel heavy work;
-- disposable state clears on memory warning.
+- no uncontrolled parallel heavy work.
 
 Preferred engineering targets:
 - normal reading roughly **30–50 MB**;
 - special operations ideally well below **70–90 MB**.
 
-## Features intentionally delegated
-Do not grow these inside PDFReader:
-- general file manager -> **iPad1Files**;
-- FTP browse/download/upload/queue/resume -> **iPad1FTPDownloader**.
-
-Existing built-in HTTP/FTP/WebDAV paths are maintenance-only.
+See `SESSION.md` for the complete architecture, integration contract, limits, test checklist and current next action.
 
 ## Build
 Expected environment:
@@ -133,18 +117,14 @@ TARGET = iphone:clang:6.1:5.1
 
 Do not switch to modern iPhoneOS9.3 SDK for this project.
 
-## Documentation
-Before development read:
-1. `SESSION.md`
-2. `ARCHITECTURE.md`
-3. `INTEGRATION.md`
-4. `TASKS.md`
-5. `TESTING.md`
-6. `AGENTS.md`
-7. `CLAUDE.md`
-8. `README.md`
+## Development handoff
+Before changing code:
 
-Then continue from `SESSION.md -> Immediate next action`.
+1. read `SESSION.md`;
+2. inspect the current source code relevant to the task;
+3. continue from `SESSION.md -> Immediate next action`.
+
+No other handoff MD is required.
 
 ## Golden rule
 **If a feature risks stability on Apple A4 / 256 MB RAM / iOS 5.1.1, redesign it as page-local/bounded, move it to the correct companion app, or do not add it.**
