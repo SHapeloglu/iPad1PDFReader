@@ -1,7 +1,7 @@
 # SESSION.md
 
 ## Project
-**iPad1PDFReader** — lightweight advanced PDF reader for the original iPad 1.
+**iPad1PDFReader** — lightweight advanced PDF reader for the original iPad 1, with a small read-only Text Reader for plain-text files handed off by iPad1Files.
 
 Repository: `SHapeloglu/iPad1PDFReader`
 
@@ -38,7 +38,10 @@ iPad1FTPDownloader
 iPad1PDFReader
   -> PDF specialist
   -> render/read/search/reflow/bookmark/annotation/page management
+  -> lightweight read-only Text Reader for supported plain-text handoff
 ```
+
+Text Reader must not become a general editor or file manager in v1.
 
 ### Canonical shared root
 
@@ -46,24 +49,51 @@ iPad1PDFReader
 /var/mobile/Media/iPad1Files
 ```
 
-Important shared directories for PDFReader:
+Important shared directories include:
 
 ```text
 /var/mobile/Media/iPad1Files/PDFs
 /var/mobile/Media/iPad1Files/Downloads
+/var/mobile/Media/iPad1Files/Documents
 ```
 
-PDFReader must open shared PDFs **in place** where safe. Do not create duplicate physical copies just to hand a PDF between these apps.
+Files handed off from iPad1Files should open **in place** where safe. Do not create duplicate physical copies solely for handoff.
 
-### PDF URL handoff contract
+### URL handoff contract
+The existing scheme is retained for compatibility:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-## Current development head
-Current source is a **v3.2 development head** on top of `v3.1.0-memorysafe`.
+Receiver behavior:
+- `.pdf` -> existing PDF Reader;
+- supported text extension -> `TextReaderViewController`;
+- unsupported extension -> `Bu dosya türü desteklenmiyor`;
+- missing path/file -> fail safely.
 
+Supported text extensions:
+
+```text
+.txt .md .log .csv .json .xml .sql .py .sh .ini .conf
+```
+
+## Current development branches
+Base PDF/highlight branch:
+
+```text
+feature/page-local-text-highlight-v2
+```
+
+Current Text Reader branch:
+
+```text
+feature/text-reader-v1
+```
+
+The Text Reader branch was created from the highlight branch so current PDF work remains present, while Text Reader changes stay isolated from `main`.
+
+## Current PDF development status
 Already present in source:
 - Core Graphics active-page rendering;
 - zoom centering improvement;
@@ -81,28 +111,69 @@ Already present in source:
 - lightweight direct outline destination resolution;
 - explicit Page Manager save/export;
 - iPad1Files shared PDFs/Downloads discovery;
-- `ipad1pdf://` receiver registration.
+- `ipad1pdf://` receiver registration;
+- bounded page-local text highlight code with fluorescent palette support.
 
-## Current highlight phase
-The previous drag-rectangle highlight is useful mainly for scanned/image PDFs, but it is not the desired primary UX for normal text PDFs.
+The highlight branch clean-build succeeded with the legacy toolchain. Physical iPad 1 testing has confirmed launch and scanned/image-PDF fallback behavior, but real selectable-text highlight is **not yet fully device-proven**.
 
-Target UX:
+## Text Reader v1 architecture
+Text Reader is separate from `PDFReaderViewController`.
+
+Controller:
+
+```text
+TextReaderViewController
+```
+
+Version 1 behavior:
+- `UITextView`;
+- UTF-8 only;
+- read-only;
+- file name in navigation title;
+- Info shows full path and file size;
+- A- / A+ font size controls;
+- Word Wrap on/off;
+- Find / Next / Previous;
+- no edit/save;
+- no syntax highlighting;
+- no Markdown rendering;
+- no JSON/XML parsing;
+- no OCR/AI/ML.
+
+### Text Reader memory rule
+Before reading, inspect file size.
+
+Hard full-load limit:
+
+```text
+2 MiB
+```
+
+Rules:
+- <=2 MiB valid UTF-8 may be loaded into `UITextView`;
+- >2 MiB is rejected before full read and user is warned;
+- no background text indexing;
+- search scans only the already-loaded string;
+- wrap-off view width is bounded;
+- off-screen loaded text may be discarded on memory warning.
+
+This is intentionally conservative because `UITextView` layout/text storage costs exceed raw file size on a 256 MB device.
+
+## Current highlight rules
+Target UX for normal searchable PDFs:
 
 ```text
 select text -> Highlight -> fluorescent color
 ```
 
-Planned fluorescent palette:
+Fluorescent palette:
 - yellow;
 - green;
 - pink;
 - orange;
 - cyan/light blue.
 
-The last-used highlight color may be remembered.
-
-### Memory rule for real text highlight
-This is **Yellow**, allowed only if implemented page-by-page:
+Real text highlight is allowed only page-by-page:
 - process only the active page;
 - do not index the whole PDF;
 - do not retain whole-document glyph/word geometry;
@@ -110,10 +181,8 @@ This is **Yellow**, allowed only if implemented page-by-page:
 - persist only small annotation data such as page + rect(s) + color;
 - if a PDF has no selectable text layer, do not OCR on-device; retain optional region highlight instead.
 
-Current source already contains early highlight-color support in `AnnotationOverlayView`; user-facing text-selection/color workflow is not yet considered complete or device-proven.
-
 ## Next low-memory UX candidates
-After the current highlight phase and physical validation:
+After current Text Reader + PDF regression validation:
 - highlight color change/delete;
 - tap a note marker to open/edit it;
 - add Outline/Contents into the unified document navigation experience;
@@ -121,10 +190,11 @@ After the current highlight phase and physical validation:
 - optional left/right edge page taps if they do not conflict with zoom/annotation gestures;
 - text copy only if it can reuse the page-local text-selection work safely.
 
-## Features intentionally NOT added/grown in PDFReader
-Because companion apps own them:
+## Features intentionally NOT added/grown
+Because companion apps own them or they are too heavy:
 - general filesystem manager;
 - advanced copy/move/rename/favorites UI;
+- Text Reader editing/save in v1;
 - FTP client growth;
 - FTP transfer queue/resume engine;
 - general network file browser.
@@ -135,18 +205,26 @@ Existing PDFReader HTTP/FTP/WebDAV code is **maintenance-only**. Do not grow it 
 - OCR engine;
 - AI/ML inference;
 - whole-document bitmap cache;
-- persistent whole-document text index;
+- persistent whole-document PDF text index;
 - high-resolution multi-page pre-rendering;
 - modern cloud SDKs;
 - heavy SMB/SFTP libraries merely for parity;
 - heavy replacement PDF engine without measured real-device proof.
 
 ## Memory budgets
+PDF:
 - one active full PDF page render;
 - thumbnail cache max **8**;
 - search result cap **40**;
 - Belge Gezgini annotation summary max **80**, max **40 per kind**;
-- Reflow page-scoped;
+- Reflow page-scoped.
+
+Text Reader:
+- full source file max **2 MiB**;
+- no background index/parser;
+- one loaded document only.
+
+Global:
 - no parallel heavy processing;
 - purge disposable state on memory warning.
 
@@ -156,7 +234,9 @@ Preferred engineering ranges:
 - any unbounded growth is a failure.
 
 ## Current validation status
-The latest development source, including the newest highlight-color work, is **not yet a proven release** until it is clean-built and tested on the physical iPad 1.
+Text Reader v1 source is **not yet proven** until it clean-builds with the legacy SDK and passes physical iPad 1 tests in `TESTING.md`.
+
+Existing PDF features must be regression-tested on the same combined branch before merge/release.
 
 ## Build environment
 WSL Ubuntu + Theos + legacy iPhoneOS6.1 SDK.
@@ -167,27 +247,26 @@ rm -rf .theos
 make package FINALPACKAGE=1
 ```
 
-Do not switch to iPhoneOS9.3 SDK; it previously caused simulator `.tbd` warnings and armv7 `liblaunch.dylib` link failure.
+Do not switch to iPhoneOS9.3 SDK.
 
 ## Immediate next action
-1. Pull/download current `main`.
-2. Read `SESSION.md`, `ARCHITECTURE.md`, `INTEGRATION.md`, `TASKS.md`, `TESTING.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`.
-3. Finish the **page-local real text highlight + fluorescent color UX** without whole-document indexing.
-4. Keep rectangle/area highlight only as a fallback for PDFs without selectable text.
-5. Clean-build with the legacy toolchain.
-6. Fix only real legacy compile errors without changing platform constraints.
-7. Install on physical iPad 1.
-8. Run the highlight, integration and memory tests in `TESTING.md`.
-9. Do not start heavier features until this phase is stable.
+1. Checkout/pull `feature/text-reader-v1`.
+2. Clean-build with the legacy iPhoneOS6.1 SDK.
+3. Fix only real iOS 5.1.1 / legacy SDK / MRC compile errors; do not change platform targets.
+4. Keep Text Reader isolated from PDF rendering classes.
+5. Install the combined branch on physical iPad 1 when ready for the consolidated test pass.
+6. Run Text Reader tests in `TESTING.md`, including UTF-8 Turkish, search, wrap, 2 MiB limit, iPad1Files handoff and unsupported extension.
+7. Run mandatory PDF regressions: open/render, zoom, navigation, search, bookmark, highlight, notes and iPad1Files handoff.
+8. Do not mark Text Reader or real-text highlight as complete until physical iPad 1 validation passes.
 
 ## New-chat starter
 Use this in a new conversation:
 
 ```text
 We are continuing https://github.com/SHapeloglu/iPad1PDFReader.
-Read SESSION.md, ARCHITECTURE.md, INTEGRATION.md, TASKS.md,
-TESTING.md, AGENTS.md, CLAUDE.md and README.md before changing code.
-Continue exactly from SESSION.md -> Immediate next action.
-Preserve iPad 1 / A4 / 256 MB / iOS 5.1.1 / armv7 / non-ARC / Theos constraints.
-Do not duplicate iPad1Files or iPad1FTPDownloader responsibilities.
+Read SESSION.md first; it is authoritative.
+Current feature branch is feature/text-reader-v1.
+Preserve iPad 1 / A4 / 256 MB / iOS 5.1.1 / armv7 / non-ARC / Theos / iPhoneOS6.1 SDK constraints.
+Keep TextReaderViewController separate from PDFReaderViewController.
+Continue from SESSION.md -> Immediate next action.
 ```
