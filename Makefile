@@ -10,6 +10,7 @@ iPad1PDFReader_FILES = \
 	AppDelegate.m \
 	PDFLibraryViewController.m \
 	PDFReaderViewController.m \
+	TextReaderViewController.m \
 	PDFPageView.m \
 	BookmarkStore.m \
 	RecentStore.m \
