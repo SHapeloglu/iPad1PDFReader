@@ -1,5 +1,6 @@
 #import "PDFLibraryViewController.h"
 #import "PDFReaderViewController.h"
+#import "TextReaderViewController.h"
 #import "RecentStore.h"
 #import "NetworkCenterViewController.h"
 @implementation PDFLibraryViewController
@@ -69,6 +70,32 @@
     return YES;
 }
 
+- (BOOL)openTextAtPath:(NSString *)path {
+    if(!path||![TextReaderViewController isSupportedTextPath:path]||![[NSFileManager defaultManager] fileExistsAtPath:path])return NO;
+    [RecentStore touchPath:path];
+    [self.navigationController pushViewController:[[[TextReaderViewController alloc] initWithTextPath:path] autorelease] animated:YES];
+    return YES;
+}
+
+- (void)showUnsupportedFileAtPath:(NSString *)path {
+    NSString *ext=[[[path pathExtension] lowercaseString] length]?[[path pathExtension] lowercaseString]:@"(uzantı yok)";
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Bu dosya türü desteklenmiyor" message:[NSString stringWithFormat:@"Dosya uzantısı: %@",ext] delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+    [a show];
+}
+
+- (BOOL)openDocumentAtPath:(NSString *)path {
+    if(!path||![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Dosya açılamadı" message:@"Dosya bulunamadı." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+        [a show];
+        return NO;
+    }
+    NSString *ext=[[path pathExtension] lowercaseString];
+    if([ext isEqualToString:@"pdf"]) return [self openPDFAtPath:path];
+    if([TextReaderViewController isSupportedTextPath:path]) return [self openTextAtPath:path];
+    [self showUnsupportedFileAtPath:path];
+    return NO;
+}
+
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)i {
     NSDictionary *item=[_pdfFiles objectAtIndex:i.row];
     [self openPDFAtPath:[item objectForKey:@"path"]];
@@ -95,16 +122,19 @@
                 break;
             }
         }
-        [self openPDFAtPath:path];
+        [self openDocumentAtPath:path];
         return;
     }
     if(![url isFileURL])return;
     NSString *source=[url path];
-    if([self isStableDirectPath:source]){[self openPDFAtPath:source];return;}
+    NSString *ext=[[source pathExtension] lowercaseString];
+    BOOL supported=[ext isEqualToString:@"pdf"]||[TextReaderViewController isSupportedTextPath:source];
+    if(!supported){[self showUnsupportedFileAtPath:source];return;}
+    if([self isStableDirectPath:source]){[self openDocumentAtPath:source];return;}
     NSString *dst=[[self documentsDirectory] stringByAppendingPathComponent:[source lastPathComponent]];
     if(![source isEqualToString:dst])[[NSFileManager defaultManager] copyItemAtPath:source toPath:dst error:nil];
     [self reloadPDFList];
-    [self openPDFAtPath:dst];
+    [self openDocumentAtPath:dst];
 }
 
 - (void)dealloc { [_pdfFiles release]; [_emptyLabel release]; [_actionIndexPath release]; [super dealloc]; }
