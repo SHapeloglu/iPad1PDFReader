@@ -1,13 +1,19 @@
 # iPad1PDFReader
 
-A lightweight advanced PDF reader built specifically for the **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7**.
+A lightweight advanced PDF reader built specifically for the **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7**, with a deliberately small read-only Text Reader for plain-text files handed off by iPad1Files.
 
 The project deliberately prioritizes **stability, bounded memory and clear responsibility boundaries** over feature count.
 
 ## Current development state
-Current source is a **v3.2 development head** on top of `v3.1.0-memorysafe`.
+Current Text Reader work lives on:
 
-It must still be clean-built and validated on the physical iPad 1 after the latest highlight/integration work. See `SESSION.md`.
+```text
+feature/text-reader-v1
+```
+
+This branch is based on `feature/page-local-text-highlight-v2`, so current PDF highlight work is preserved while Text Reader changes remain isolated from `main`.
+
+Neither Text Reader v1 nor real selectable-text highlight should be considered release-proven until the combined branch is clean-built and validated on the physical iPad 1. See `SESSION.md`.
 
 ## Ecosystem
 This app is one part of a three-app iPad 1 ecosystem:
@@ -21,6 +27,7 @@ iPad1FTPDownloader
 
 iPad1PDFReader
   -> PDF read/search/reflow/bookmark/annotation/page management
+  -> lightweight read-only text viewing
 ```
 
 The applications should **complement, not duplicate, each other**.
@@ -38,13 +45,25 @@ PDFReader discovers shared PDFs from at least:
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
-PDF handoff:
+Text files are primarily opened by iPad1Files handoff and should use the same physical file in-place.
+
+## URL handoff
+The existing compatibility scheme remains:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-Shared PDFs should be opened in-place where safe instead of creating unnecessary duplicate files.
+Routing:
+- `.pdf` -> PDF Reader;
+- `.txt`, `.md`, `.log`, `.csv`, `.json`, `.xml`, `.sql`, `.py`, `.sh`, `.ini`, `.conf` -> Text Reader;
+- unsupported extension -> user-visible error.
+
+Example:
+
+```text
+ipad1pdf://open?path=/var/mobile/Media/iPad1Files/Documents/test.txt
+```
 
 ## PDFReader features
 - Core Graphics PDF rendering;
@@ -62,6 +81,8 @@ Shared PDFs should be opened in-place where safe instead of creating unnecessary
 - drawing;
 - page notes;
 - region highlight;
+- bounded page-local text highlight development;
+- fluorescent highlight palette;
 - simple signature;
 - flattened annotation export;
 - page reorder/delete/rotate/export;
@@ -69,7 +90,35 @@ Shared PDFs should be opened in-place where safe instead of creating unnecessary
 - iTunes File Sharing / Open In;
 - iPad1Files shared-storage handoff.
 
-## Current feature phase: better highlight UX
+## Text Reader v1
+Supported extensions:
+
+```text
+.txt .md .log .csv .json .xml .sql .py .sh .ini .conf
+```
+
+All are displayed as **plain text**.
+
+Features:
+- legacy `UITextView`;
+- UTF-8;
+- read-only;
+- file name in title;
+- full path and size in Info;
+- A- / A+ font size;
+- Word Wrap on/off;
+- Find / Next / Previous;
+- 2 MiB hard full-load source-file limit.
+
+Not included in v1:
+- editing/save;
+- syntax highlighting;
+- Markdown rendering;
+- JSON/XML parsing;
+- OCR;
+- AI/ML.
+
+## Current PDF highlight phase
 The desired normal-text workflow is:
 
 ```text
@@ -89,14 +138,15 @@ Real text highlight must remain page-local; no whole-document text/glyph index i
 
 ## Memory policy
 Hard rules:
-- one active full page render;
+- one active full PDF page render;
 - thumbnail cache max **8**;
-- search results max **40**;
-- search page-by-page;
+- PDF search results max **40**;
+- PDF search page-by-page;
 - Reflow page-by-page;
 - Belge Gezgini annotation summary max **80**, max **40 per kind**;
+- Text Reader source file max **2 MiB** for full load;
 - no whole-document bitmap cache;
-- no persistent whole-document text index;
+- no persistent whole-document PDF text index;
 - no on-device OCR;
 - no AI/ML;
 - no uncontrolled parallel heavy work;
@@ -110,6 +160,8 @@ Preferred engineering targets:
 Do not grow these inside PDFReader:
 - general file manager -> **iPad1Files**;
 - FTP browse/download/upload/queue/resume -> **iPad1FTPDownloader**.
+
+Text Reader v1 is viewer-only; file management still belongs to iPad1Files.
 
 Existing built-in HTTP/FTP/WebDAV paths are maintenance-only.
 
