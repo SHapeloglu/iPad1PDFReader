@@ -20,10 +20,68 @@ Required:
 `building for iOS 5.1.0 is deprecated` warning is acceptable.
 Do not accept simulator `.tbd`/armv7 linker symptoms from iPhoneOS9.3.sdk.
 
-## Core smoke test
+## Text Reader v1 — current feature validation
+Use files from iPad1Files where possible so in-place handoff is tested.
+
+### Basic opening
+- [ ] Small `.txt` opens in Text Reader.
+- [ ] UTF-8 Turkish characters render correctly: `ç ğ ı İ ö ş ü Ç Ğ Ö Ş Ü`.
+- [ ] `.md` opens as plain text; Markdown is not rendered.
+- [ ] `.log` opens as plain text.
+- [ ] `.csv` opens as plain text.
+- [ ] `.json` opens as plain text; JSON is not parsed.
+- [ ] `.xml` opens as plain text; XML is not parsed.
+- [ ] `.sql` opens as plain text.
+- [ ] `.py` opens as plain text.
+- [ ] `.sh` opens as plain text.
+- [ ] `.ini` opens as plain text.
+- [ ] `.conf` opens as plain text.
+- [ ] Text is read-only; no editing/save UI exists.
+- [ ] File name appears in navigation title.
+- [ ] Info shows full path and file size.
+
+### Memory / file size
+- [ ] File at or below 2 MiB loads successfully when valid UTF-8.
+- [ ] File above 2 MiB shows a large-file warning.
+- [ ] File above 2 MiB is not assigned to `UITextView`.
+- [ ] Repeatedly opening/closing text files does not cause progressive memory growth.
+- [ ] Invalid/non-UTF-8 text fails gracefully with encoding warning.
+
+### Search
+- [ ] `Ara -> Bul` finds an existing term.
+- [ ] Found term scrolls into view.
+- [ ] `Sonraki` moves to the next occurrence.
+- [ ] Search wraps safely when reaching the end.
+- [ ] `Önceki` moves to the previous occurrence.
+- [ ] Search wraps safely when reaching the beginning.
+- [ ] Missing term shows `Bulunamadı` without crash.
+- [ ] Search does not create a background index.
+
+### Text UI
+- [ ] `A+` increases font size.
+- [ ] Font size stops at the upper hard limit.
+- [ ] `A-` decreases font size.
+- [ ] Font size stops at the lower hard limit.
+- [ ] Word Wrap starts enabled.
+- [ ] Wrap can be disabled.
+- [ ] Wrap-off allows horizontal movement for ordinary long lines.
+- [ ] Wrap can be enabled again without losing the loaded file.
+- [ ] Rotation/relayout does not crash.
+
+### iPad1Files / URL handoff
+- [ ] Text file opened from `/var/mobile/Media/iPad1Files/...` uses the same physical file.
+- [ ] No duplicate file is created solely for iPad1Files handoff.
+- [ ] `ipad1pdf://open?path=/var/mobile/Media/iPad1Files/Documents/test.txt` opens Text Reader.
+- [ ] Percent-encoded spaces in a text path decode correctly.
+- [ ] Supported text extension routes to Text Reader.
+- [ ] `.pdf` still routes to PDF Reader.
+- [ ] Unsupported extension shows `Bu dosya türü desteklenmiyor`.
+- [ ] Nonexistent path fails safely.
+
+## Core PDF smoke test — mandatory regression after Text Reader changes
 - [ ] App launches.
 - [ ] Library opens.
-- [ ] Local PDF opens.
+- [ ] Local PDF opens in `PDFReaderViewController`, not Text Reader.
 - [ ] Previous/next works.
 - [ ] Pinch zoom does not jump/lean left.
 - [ ] Zoom scale survives page change.
@@ -32,8 +90,12 @@ Do not accept simulator `.tbd`/armv7 linker symptoms from iPhoneOS9.3.sdk.
 - [ ] Direct page-number navigation validates range.
 - [ ] Last page persists.
 - [ ] Bookmark persists.
+- [ ] Existing PDF search still works.
+- [ ] Existing PDF highlight path still opens and draws annotations.
+- [ ] Existing PDF notes still add/view/edit/delete.
+- [ ] Existing PDF bookmarks still add/remove/persist.
 
-## iPad1Files integration
+## iPad1Files PDF integration
 - [ ] PDFs in `/var/mobile/Media/iPad1Files/PDFs` appear.
 - [ ] PDFs in `/var/mobile/Media/iPad1Files/Downloads` appear.
 - [ ] Shared PDF opens in-place.
@@ -41,7 +103,7 @@ Do not accept simulator `.tbd`/armv7 linker symptoms from iPhoneOS9.3.sdk.
 - [ ] `ipad1pdf://open?path=...` opens the requested existing PDF.
 - [ ] Invalid/nonexistent path fails safely.
 
-## Search
+## PDF Search
 - [ ] 100+ page text PDF search progresses incrementally.
 - [ ] UI remains responsive between pages.
 - [ ] Cancel stops search safely.
@@ -62,7 +124,7 @@ Do not accept simulator `.tbd`/armv7 linker symptoms from iPhoneOS9.3.sdk.
 - [ ] Direct `/A /GoTo` array target navigates correctly.
 - [ ] Unsupported/named destination fails gracefully without crash.
 
-## Highlight — current priority
+## Highlight — current PDF validation
 ### Selectable text PDF
 - [ ] Text selection uses only active-page temporary geometry.
 - [ ] Selected text can be highlighted.
@@ -124,14 +186,16 @@ Use disposable PDFs.
 - [ ] Change pages rapidly while zoomed.
 - [ ] Rotate portrait/landscape repeatedly.
 - [ ] Open/close multiple PDFs sequentially.
+- [ ] Alternate opening PDFs and supported text files repeatedly.
 - [ ] No progressive slowdown or crash.
 
 ## Memory warning
 Under pressure verify:
 - [ ] thumbnail cache clears;
-- [ ] search disposable results/state can clear safely;
+- [ ] PDF search disposable results/state can clear safely;
 - [ ] temporary highlight/text-selection geometry clears;
 - [ ] Belge Gezgini temporary summary can clear;
+- [ ] off-screen Text Reader releases loaded text on memory warning;
 - [ ] current PDF/page remains recoverable.
 
 ## Companion-app boundary regression
@@ -141,9 +205,11 @@ PDFReader is not being expanded as a file manager or FTP client.
 - [ ] No new transfer queue/resume subsystem is added here.
 - [ ] Shared file management remains delegated to iPad1Files.
 - [ ] FTP transfer work remains delegated to iPad1FTPDownloader.
+- [ ] Text Reader remains viewer-only and does not add rename/delete/copy/save workflows.
 
 ## RAM engineering targets
-- normal reading: roughly **30–50 MB preferred**;
-- special operations: ideally well below **70–90 MB**;
-- no feature may introduce unbounded arrays, whole-document text retention or multi-page full-resolution bitmap caching;
+- normal PDF reading: roughly **30–50 MB preferred**;
+- special PDF operations: ideally well below **70–90 MB**;
+- Text Reader full-load hard limit: **2 MiB source file**;
+- no feature may introduce unbounded arrays, whole-document PDF text retention or multi-page full-resolution bitmap caching;
 - sustained unbounded memory growth is a test failure.
