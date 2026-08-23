@@ -37,8 +37,10 @@ Do not duplicate sibling-app responsibilities.
 ```text
 iPad1Files          = shared filesystem/file management/Open With
 iPad1FTPDownloader  = FTP browse/download/upload/queue/resume
-iPad1PDFReader      = PDF rendering/search/reflow/annotation/page management
+iPad1PDFReader      = PDF specialist + lightweight read-only Text Reader
 ```
+
+Text Reader v1 may display supported plain-text files handed off by iPad1Files, but must not become an editor or file manager.
 
 PDFReader's legacy HTTP/FTP/WebDAV code is maintenance-only. Do not grow it for competitor parity.
 
@@ -48,11 +50,13 @@ Canonical shared root:
 /var/mobile/Media/iPad1Files
 ```
 
-PDF handoff:
+Handoff remains:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
+
+Route `.pdf` to PDF Reader and supported text extensions to `TextReaderViewController`.
 
 ## Feature classification
 - **Green**: low-memory/incremental -> generally safe.
@@ -63,31 +67,38 @@ Red examples:
 - OCR;
 - AI/ML;
 - whole-document bitmap caches;
-- persistent full-document text index;
+- persistent full-document PDF text index;
 - large cloud SDKs;
 - heavy PDF/network engines without measured need.
 
 ## Hard memory rules
 - one active full PDF page render;
 - thumbnail cache max 8;
-- search results max 40;
-- search page-by-page;
+- PDF search results max 40;
+- PDF search page-by-page;
 - Reflow page-by-page;
 - Belge Gezgini annotation summary max 80, max 40 per kind;
+- Text Reader source file max 2 MiB for full load;
+- no background text index/parser for Text Reader;
 - no parallel heavy work;
 - clear disposable state on memory warning;
 - MRC ownership correctness is mandatory.
 
 ## Current priority
-Finish page-local **real text highlight + fluorescent color** UX.
+Current branch is `feature/text-reader-v1`.
 
-Rules:
-- active page only;
-- no whole-document glyph/text index;
-- temporary selection geometry must be released on page change/memory warning;
-- persist compact rect(s) + color only;
-- image/scanned PDF may use region highlight fallback;
-- never add OCR to make scanned PDFs selectable.
+Finish legacy clean-build and physical validation of the new **read-only Text Reader** while preserving all existing PDF behavior.
+
+Text Reader rules:
+- separate `TextReaderViewController`;
+- UTF-8 only;
+- read-only;
+- supported extensions only;
+- 2 MiB full-load hard limit;
+- A-/A+, Wrap, Info, Find/Next/Previous;
+- no edit/save, syntax highlighting, Markdown rendering, JSON/XML parsing, OCR, AI or ML.
+
+The page-local real-text highlight work remains present underneath this branch and is still not fully device-proven. Do not weaken its bounds.
 
 ## Definition of done
 A feature is not done until:
