@@ -79,23 +79,20 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
 - (CGFloat)noWrapWidthForText:(NSString *)text minimum:(CGFloat)minimumWidth {
     if(!text||[text length]==0) return minimumWidth;
     NSUInteger length=[text length];
-    NSUInteger start=0;
-    CGFloat maxWidth=minimumWidth;
-    UIFont *font=[UIFont systemFontOfSize:_fontSize];
-    while(start<length) {
-        NSRange lineEnd=[text rangeOfString:@"\n" options:0 range:NSMakeRange(start,length-start)];
-        NSUInteger end=(lineEnd.location==NSNotFound)?length:lineEnd.location;
-        NSRange lineRange=NSMakeRange(start,end-start);
-        if(lineRange.length>0) {
-            NSString *line=[text substringWithRange:lineRange];
-            CGSize s=[line sizeWithFont:font];
-            maxWidth=MAX(maxWidth,s.width+32.0f);
-            if(maxWidth>=IPAD1_TEXT_MAX_NOWRAP_WIDTH) return IPAD1_TEXT_MAX_NOWRAP_WIDTH;
+    NSUInteger currentLine=0;
+    NSUInteger longestLine=0;
+    for(NSUInteger i=0;i<length;i++) {
+        unichar ch=[text characterAtIndex:i];
+        if(ch=='\n'||ch=='\r') {
+            if(currentLine>longestLine) longestLine=currentLine;
+            currentLine=0;
+        } else {
+            currentLine++;
         }
-        if(lineEnd.location==NSNotFound) break;
-        start=lineEnd.location+1;
     }
-    return MIN(IPAD1_TEXT_MAX_NOWRAP_WIDTH,maxWidth);
+    if(currentLine>longestLine) longestLine=currentLine;
+    CGFloat estimated=(CGFloat)longestLine*_fontSize*0.65f+32.0f;
+    return MIN(IPAD1_TEXT_MAX_NOWRAP_WIDTH,MAX(minimumWidth,estimated));
 }
 
 - (void)layoutTextViewPreservingOffset:(BOOL)preserve {
