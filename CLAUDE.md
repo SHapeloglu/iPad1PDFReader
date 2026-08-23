@@ -18,7 +18,9 @@ Do not turn iPad1PDFReader into a monolith.
 
 - iPad1Files owns local file management/shared storage/Open With.
 - iPad1FTPDownloader owns FTP transfer/browse/queue/resume.
-- iPad1PDFReader owns PDF reading/search/reflow/annotation/page operations.
+- iPad1PDFReader owns PDF reading/search/reflow/annotation/page operations plus a small read-only Text Reader.
+
+Text Reader must remain a viewer; file management stays in iPad1Files.
 
 Prefer lightweight handoff over duplicated engines.
 
@@ -29,12 +31,23 @@ Prefer lightweight handoff over duplicated engines.
 - avoid uncontrolled concurrency;
 - keep temporary text/images/geometry short-lived;
 - use hard caps for lists/caches;
-- fail gracefully on unsupported PDF constructs.
+- fail gracefully on unsupported PDF/file constructs.
 
 ## Current development priority
-Real text highlight with fluorescent colors, page-local only.
+Current branch: `feature/text-reader-v1`.
 
-Do not create whole-document text/glyph indexes. Do not add OCR/AI. Keep region highlight as fallback for image PDFs.
+Finish the lightweight Text Reader and prove it with the legacy toolchain and physical iPad 1.
+
+Rules:
+- separate `TextReaderViewController`;
+- `UITextView`, UTF-8, read-only;
+- 2 MiB source-file hard limit before full load;
+- no editor/save;
+- no syntax highlighting/render/parser stack;
+- no OCR/AI/ML;
+- existing PDF renderer/search/bookmark/highlight/note behavior must not regress.
+
+Page-local real text highlight remains bounded and still requires full physical validation; do not create whole-document glyph/text indexes.
 
 ## New chat continuation
 Always continue from:
