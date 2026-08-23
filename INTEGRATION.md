@@ -54,9 +54,10 @@ Owns:
 - bookmarks;
 - outline;
 - annotations/highlights/notes/signature;
-- PDF page operations/export.
+- PDF page operations/export;
+- lightweight read-only viewing of supported plain-text files.
 
-Must not grow into a general file manager or duplicate the FTP transfer engine.
+Text Reader v1 does **not** own editing, save, rename, delete, copy/move, syntax parsing or file management.
 
 ## Canonical shared filesystem
 Owned by iPad1Files:
@@ -89,7 +90,7 @@ Default destination for iPad1FTPDownloader should be:
 
 A downloaded file must not be duplicated into a second FTP-private download folder merely for integration.
 
-Example:
+Example PDF:
 
 ```text
 FTP server
@@ -98,6 +99,8 @@ FTP server
   -> iPad1Files sees the same physical file
   -> iPad1PDFReader opens the same physical file
 ```
+
+The same single-file principle applies to supported text files.
 
 ## PDFReader discovery contract
 PDFReader should directly discover at least:
@@ -109,28 +112,75 @@ PDFReader should directly discover at least:
 
 Shared PDFs should open in-place where permissions allow.
 
-## PDF handoff URL scheme
-Authoritative receiver contract:
+Text files do not need to be duplicated into PDFReader storage. They are primarily opened by iPad1Files handoff and should open in-place.
+
+## Handoff URL scheme
+Authoritative receiver contract remains:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
+The scheme name is retained for backward compatibility even though the receiver can now route supported text files.
+
 Rules:
 - sender passes an absolute path;
 - path must be percent-encoded;
-- PDFReader validates file existence and `.pdf` type before opening;
-- shared files should not be copied solely because of the handoff;
+- receiver validates file existence before opening;
+- `.pdf` routes to existing PDF Reader;
+- supported text extensions route to Text Reader;
+- unsupported extensions show a user-visible unsupported-file message;
+- shared iPad1Files files must not be copied solely because of handoff;
 - ordinary external `Open In` files may still be copied to an app-owned persistent location when necessary.
 
-## Open With direction
-Initial extension mapping in iPad1Files:
+Supported Text Reader extensions:
 
 ```text
-.pdf -> iPad1PDFReader
+.txt
+.md
+.log
+.csv
+.json
+.xml
+.sql
+.py
+.sh
+.ini
+.conf
+```
+
+## Open With direction
+Extension mapping in iPad1Files may route:
+
+```text
+.pdf  -> iPad1PDFReader / PDF Reader
+.txt  -> iPad1PDFReader / Text Reader
+.md   -> iPad1PDFReader / Text Reader
+.log  -> iPad1PDFReader / Text Reader
+.csv  -> iPad1PDFReader / Text Reader
+.json -> iPad1PDFReader / Text Reader
+.xml  -> iPad1PDFReader / Text Reader
+.sql  -> iPad1PDFReader / Text Reader
+.py   -> iPad1PDFReader / Text Reader
+.sh   -> iPad1PDFReader / Text Reader
+.ini  -> iPad1PDFReader / Text Reader
+.conf -> iPad1PDFReader / Text Reader
 ```
 
 Future mappings belong in iPad1Files registry rather than hard-coding every app relationship into PDFReader.
+
+## Text Reader policy
+Version 1 is intentionally small:
+- UTF-8;
+- `UITextView`;
+- read-only;
+- A- / A+;
+- Word Wrap toggle;
+- Find / Next / Previous;
+- file info including full path;
+- 2 MiB hard full-load limit.
+
+No editing/save, syntax highlighting, Markdown rendering, JSON/XML parsing, OCR, AI or ML.
 
 ## Networking policy
 Existing lightweight HTTP/FTP/WebDAV code inside PDFReader is maintenance-only.
