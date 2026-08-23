@@ -1,7 +1,7 @@
 # ARCHITECTURE.md
 
 ## Goal
-Build the most capable PDF reader practical on an **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** without sacrificing stability for feature count.
+Build the most capable PDF reader practical on an **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** without sacrificing stability for feature count. A small read-only Text Reader may handle plain-text handoff from iPad1Files, but PDF remains the primary purpose.
 
 ## Immutable platform
 
@@ -40,6 +40,38 @@ Rules:
 - never retain several full-resolution page bitmaps;
 - purge disposable state on memory warning.
 
+## Text Reader
+`TextReaderViewController` is deliberately separate from `PDFReaderViewController`.
+
+Supported plain-text extensions:
+
+```text
+.txt .md .log .csv .json .xml .sql .py .sh .ini .conf
+```
+
+Version 1 rules:
+- `UITextView` only;
+- read-only;
+- UTF-8 only;
+- no Markdown rendering;
+- no syntax highlighting;
+- no JSON/XML parsing;
+- no editing/save;
+- file name in navigation title;
+- full path available from Info;
+- font size controls;
+- wrap toggle;
+- Find / Next / Previous search over the currently loaded text only.
+
+Memory rule:
+- inspect file size before reading;
+- hard full-load limit: **2 MiB**;
+- files above the limit are not loaded into `UITextView`; user receives a warning;
+- wrap-off width is bounded to avoid an unbounded view surface;
+- do not add background indexing or parsers.
+
+Text Reader does not alter PDF rendering, annotation, search, bookmark or page-management code.
+
 ## Thumbnails
 `ThumbnailViewController` is lazy and bounded.
 
@@ -59,6 +91,8 @@ Rules:
 - no resident document-wide text index;
 - max retained results: **40**.
 
+Text Reader search is independent and operates only on its already loaded <=2 MiB string.
+
 ## Reflow
 Reflow is page-scoped. Never concatenate the entire document into one large string.
 
@@ -70,7 +104,7 @@ Supported/lightweight families:
 - note;
 - simple signature;
 - region highlight;
-- planned page-local semantic text highlight.
+- page-local semantic text highlight.
 
 ### Real text highlight
 Real text highlight is **Yellow**.
@@ -117,7 +151,7 @@ The application family is intentionally modular:
 ```text
 iPad1Files          -> filesystem backbone
 iPad1FTPDownloader  -> FTP/network transfer specialist
-iPad1PDFReader      -> PDF specialist
+iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 ```
 
 ### iPad1Files owns
@@ -139,9 +173,10 @@ iPad1PDFReader      -> PDF specialist
 - search/reflow;
 - bookmark/outline;
 - annotations;
-- page management/export.
+- page management/export;
+- lightweight read-only rendering of supported plain-text files handed off by iPad1Files.
 
-Do not duplicate companion-app engines inside PDFReader.
+Text Reader must not grow into a general editor or file manager without a separate architectural decision.
 
 ## Shared storage
 Canonical root:
@@ -157,13 +192,15 @@ PDFReader directly scans:
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
+Text files are primarily opened by iPad1Files handoff and should be opened in-place.
+
 Cross-app contract:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-Shared files open in-place where safe; avoid duplicate physical copies.
+The receiver checks the extension and routes PDF to PDF Reader or supported text to Text Reader. Shared files open in-place where safe; avoid duplicate physical copies.
 
 ## Networking
 Existing HTTP/FTP/WebDAV code in PDFReader is **maintenance-only**.
@@ -190,13 +227,14 @@ Rules:
 
 ## Main components
 - `AppDelegate` — bootstrap + URL/Open In handoff.
-- `PDFLibraryViewController` — local/shared PDF discovery.
-- `PDFReaderViewController` — reader orchestration.
+- `PDFLibraryViewController` — local/shared PDF discovery and document-type routing.
+- `PDFReaderViewController` — PDF reader orchestration.
+- `TextReaderViewController` — bounded read-only UTF-8 text viewing.
 - `PDFPageView` — active-page rendering.
 - `BookmarkStore` — bookmark/last-page state.
 - `AppearanceStore` — reading appearance.
 - `ThumbnailViewController` — bounded thumbnails.
-- `PDFTextExtractor` / `SearchViewController` — incremental search.
+- `PDFTextExtractor` / `SearchViewController` — incremental PDF search.
 - `ReflowViewController` — page-local reflow.
 - `AnnotationStore` / `AnnotationOverlayView` — lightweight annotations.
 - `DocumentNavigatorViewController` — bounded document navigation.
