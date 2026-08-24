@@ -234,14 +234,9 @@ Preferred engineering ranges:
 - any unbounded growth is a failure.
 
 ## Current validation status
-`feature/text-reader-v1` has now **clean-built successfully** with the required legacy Theos + iPhoneOS 6.1 SDK toolchain using armv7 / iOS 5.1 target. The only linker message was the accepted `building for iOS 5.1.0 is deprecated` warning.
+`feature/text-reader-v1` has **clean-built successfully** with the required legacy Theos + iPhoneOS 6.1 SDK toolchain using armv7 / iOS 5.1 target.
 
-Text Reader v1 is **not yet device-proven**. Physical iPad 1 tests in `TESTING.md` are still required before calling it complete.
-
-Existing PDF features must also be regression-tested on the same combined branch before merge/release.
-
-## Build environment
-WSL Ubuntu + Theos + legacy iPhoneOS6.1 SDK.
+Successful build command:
 
 ```bash
 make clean
@@ -249,24 +244,58 @@ rm -rf .theos
 make package FINALPACKAGE=1
 ```
 
+Package produced:
+
+```text
+packages/com.olap.ipad1pdfreader_3.1.0_iphoneos-arm.deb
+```
+
+The only linker message was the accepted:
+
+```text
+ld: warning: building for iOS 5.1.0 is deprecated
+```
+
+Text Reader v1 is **not yet device-proven**. Physical iPad 1 tests in `TESTING.md` are still required before calling it complete.
+
+Existing PDF features must also be regression-tested on the same combined branch before merge/release.
+
+## Physical device handoff
+Last observed iPad IP in the current session:
+
+```text
+192.168.1.100
+```
+
+This address is not authoritative and may change; verify if SSH/SCP fails.
+
+Current package install has **not yet been confirmed on-device** after the Text Reader build.
+
+## Build environment
+WSL Ubuntu + Theos + legacy iPhoneOS6.1 SDK.
+
 Do not switch to iPhoneOS9.3 SDK.
 
 ## Immediate next action
-1. Install the current `feature/text-reader-v1` package on the physical iPad 1.
-2. Run Text Reader tests in `TESTING.md`, including UTF-8 Turkish, search, wrap, 2 MiB limit, iPad1Files handoff and unsupported extension.
-3. Run mandatory PDF regressions: open/render, zoom, navigation, search, bookmark, highlight, notes and iPad1Files handoff.
-4. Fix only real iOS 5.1.1 / legacy SDK / MRC/runtime issues; do not change platform targets.
-5. Keep Text Reader isolated from PDF rendering classes.
-6. Do not mark Text Reader or real-text highlight as complete until physical iPad 1 validation passes.
+1. Pull `feature/text-reader-v1` so the local clone has the latest handoff docs.
+2. Copy `packages/com.olap.ipad1pdfreader_3.1.0_iphoneos-arm.deb` to the physical iPad 1 (last observed IP `192.168.1.100`).
+3. Install with `dpkg -i`, run `uicache`, restart SpringBoard if needed.
+4. Run Text Reader tests in `TESTING.md`, including UTF-8 Turkish, search, wrap, 2 MiB limit, iPad1Files handoff and unsupported extension.
+5. Run mandatory PDF regressions: open/render, zoom, navigation, search, bookmark, highlight, notes and iPad1Files handoff.
+6. Fix only real iOS 5.1.1 / legacy SDK / MRC/runtime issues; do not change platform targets.
+7. Keep Text Reader isolated from PDF rendering classes.
+8. Do not mark Text Reader or real-text highlight as complete until physical iPad 1 validation passes.
 
 ## New-chat starter
 Use this in a new conversation:
 
 ```text
-We are continuing https://github.com/SHapeloglu/iPad1PDFReader.
-Read SESSION.md first; it is authoritative.
-Current feature branch is feature/text-reader-v1.
-Preserve iPad 1 / A4 / 256 MB / iOS 5.1.1 / armv7 / non-ARC / Theos / iPhoneOS6.1 SDK constraints.
-Keep TextReaderViewController separate from PDFReaderViewController.
-Continue from SESSION.md -> Immediate next action.
+https://github.com/SHapeloglu/iPad1PDFReader
+Bu projeye kaldığımız yerden devam edelim.
+Önce SESSION.md dosyasını oku. SESSION.md bu proje için authoritative handoff belgesidir.
+Current branch: feature/text-reader-v1
+SESSION.md içindeki Immediate next action bölümünden devam et.
+iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / Objective-C / Theos / legacy iPhoneOS 6.1 SDK / non-ARC-MRC sınırlarından sapma.
+TextReaderViewController ayrı kalmalı; PDFReaderViewController içine text-reader kodu taşınmamalı.
+Fiziksel cihazda doğrulanmamış özellikleri çalışıyor kabul etme.
 ```
