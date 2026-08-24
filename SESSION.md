@@ -234,9 +234,11 @@ Preferred engineering ranges:
 - any unbounded growth is a failure.
 
 ## Current validation status
-Text Reader v1 source is **not yet proven** until it clean-builds with the legacy SDK and passes physical iPad 1 tests in `TESTING.md`.
+`feature/text-reader-v1` has now **clean-built successfully** with the required legacy Theos + iPhoneOS 6.1 SDK toolchain using armv7 / iOS 5.1 target. The only linker message was the accepted `building for iOS 5.1.0 is deprecated` warning.
 
-Existing PDF features must be regression-tested on the same combined branch before merge/release.
+Text Reader v1 is **not yet device-proven**. Physical iPad 1 tests in `TESTING.md` are still required before calling it complete.
+
+Existing PDF features must also be regression-tested on the same combined branch before merge/release.
 
 ## Build environment
 WSL Ubuntu + Theos + legacy iPhoneOS6.1 SDK.
@@ -250,14 +252,12 @@ make package FINALPACKAGE=1
 Do not switch to iPhoneOS9.3 SDK.
 
 ## Immediate next action
-1. Checkout/pull `feature/text-reader-v1`.
-2. Clean-build with the legacy iPhoneOS6.1 SDK.
-3. Fix only real iOS 5.1.1 / legacy SDK / MRC compile errors; do not change platform targets.
-4. Keep Text Reader isolated from PDF rendering classes.
-5. Install the combined branch on physical iPad 1 when ready for the consolidated test pass.
-6. Run Text Reader tests in `TESTING.md`, including UTF-8 Turkish, search, wrap, 2 MiB limit, iPad1Files handoff and unsupported extension.
-7. Run mandatory PDF regressions: open/render, zoom, navigation, search, bookmark, highlight, notes and iPad1Files handoff.
-8. Do not mark Text Reader or real-text highlight as complete until physical iPad 1 validation passes.
+1. Install the current `feature/text-reader-v1` package on the physical iPad 1.
+2. Run Text Reader tests in `TESTING.md`, including UTF-8 Turkish, search, wrap, 2 MiB limit, iPad1Files handoff and unsupported extension.
+3. Run mandatory PDF regressions: open/render, zoom, navigation, search, bookmark, highlight, notes and iPad1Files handoff.
+4. Fix only real iOS 5.1.1 / legacy SDK / MRC/runtime issues; do not change platform targets.
+5. Keep Text Reader isolated from PDF rendering classes.
+6. Do not mark Text Reader or real-text highlight as complete until physical iPad 1 validation passes.
 
 ## New-chat starter
 Use this in a new conversation:
