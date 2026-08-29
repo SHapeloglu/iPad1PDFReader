@@ -11,6 +11,7 @@
 #import "PDFOutlineParser.h"
 
 static NSString * const LastHighlightColorKey=@"LastHighlightColor";
+static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 
 @implementation PDFReaderViewController
 
@@ -19,6 +20,11 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
         _pdfPath=[path copy];
         _sessionZoomScale=1.0f;
         _editingAnnotationIndex=NSNotFound;
+        _editingHighlightIndex=NSNotFound;
+        _backHistory=[[NSMutableArray alloc] init];
+        _forwardHistory=[[NSMutableArray alloc] init];
+        _restoringHistory=NO;
+        _pageLocked=NO;
     }
     return self;
 }
@@ -59,6 +65,11 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     _doubleTapRecognizer=[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
     _doubleTapRecognizer.numberOfTapsRequired=2;
     [_scrollView addGestureRecognizer:_doubleTapRecognizer];
+
+    _edgeTapRecognizer=[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleEdgeTap:)];
+    _edgeTapRecognizer.numberOfTapsRequired=1;
+    [_edgeTapRecognizer requireGestureRecognizerToFail:_doubleTapRecognizer];
+    [_scrollView addGestureRecognizer:_edgeTapRecognizer];
 
     _toolbar=[[UIToolbar alloc] initWithFrame:CGRectZero];
     _previousButton=[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRewind target:self action:@selector(previousPage)];
@@ -153,7 +164,7 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     [BookmarkStore setLastPage:_currentPage forPath:_pdfPath];
     _overlay.page=_currentPage;
     [_overlay reloadAnnotations];
-    _pageLabel.text=[NSString stringWithFormat:@"%lu/%lu",(unsigned long)_currentPage,(unsigned long)_pageCount];
+    _pageLabel.text=[NSString stringWithFormat:@"%@%lu/%lu",_pageLocked?@"🔒 ":@"",(unsigned long)_currentPage,(unsigned long)_pageCount];
     _bookmarkButton.title=[BookmarkStore isBookmarkedPage:_currentPage forPath:_pdfPath]?@"★":@"☆";
     [self layoutPageBase];
 
@@ -164,17 +175,82 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     [self restoreNormalizedViewportCenter:relative];
 }
 
-- (void)previousPage { if(_currentPage>1){_currentPage--;[self displayCurrentPage];} }
-- (void)nextPage { if(_currentPage<_pageCount){_currentPage++;[self displayCurrentPage];} }
+- (void)trimReadingHistory:(NSMutableArray *)history {
+    while([history count]>IPAD1_READING_HISTORY_LIMIT)[history removeObjectAtIndex:0];
+}
+
+- (void)navigateToPage:(NSUInteger)page recordHistory:(BOOL)record {
+    if(page<1||page>_pageCount||page==_currentPage)return;
+    if(record&&!_restoringHistory){
+        [_backHistory addObject:[NSNumber numberWithUnsignedInteger:_currentPage]];
+        [self trimReadingHistory:_backHistory];
+        [_forwardHistory removeAllObjects];
+    }
+    _currentPage=page;
+    [self displayCurrentPage];
+}
+
+- (void)previousPage { if(!_pageLocked&&_currentPage>1)[self navigateToPage:_currentPage-1 recordHistory:YES]; }
+- (void)nextPage { if(!_pageLocked&&_currentPage<_pageCount)[self navigateToPage:_currentPage+1 recordHistory:YES]; }
+
+- (void)goBackReadingLocation {
+    if([_backHistory count]==0)return;
+    NSNumber *target=[[_backHistory lastObject] retain];
+    [_backHistory removeLastObject];
+    [_forwardHistory addObject:[NSNumber numberWithUnsignedInteger:_currentPage]];
+    [self trimReadingHistory:_forwardHistory];
+    _restoringHistory=YES;
+    [self navigateToPage:[target unsignedIntegerValue] recordHistory:NO];
+    _restoringHistory=NO;
+    [target release];
+}
+
+- (void)goForwardReadingLocation {
+    if([_forwardHistory count]==0)return;
+    NSNumber *target=[[_forwardHistory lastObject] retain];
+    [_forwardHistory removeLastObject];
+    [_backHistory addObject:[NSNumber numberWithUnsignedInteger:_currentPage]];
+    [self trimReadingHistory:_backHistory];
+    _restoringHistory=YES;
+    [self navigateToPage:[target unsignedIntegerValue] recordHistory:NO];
+    _restoringHistory=NO;
+    [target release];
+}
 
 - (void)handleDoubleTap:(UITapGestureRecognizer *)g {
-    if(g.state!=UIGestureRecognizerStateRecognized)return;
+    if(_pageLocked||g.state!=UIGestureRecognizerStateRecognized)return;
     if(_scrollView.zoomScale>1.05f){[_scrollView setZoomScale:1.0f animated:YES];return;}
     CGFloat target=MIN(2.5f,_scrollView.maximumZoomScale);
     CGPoint p=[g locationInView:_pageView];
     CGSize b=_scrollView.bounds.size;
     CGRect rect=CGRectMake(p.x-b.width/(2.0f*target),p.y-b.height/(2.0f*target),b.width/target,b.height/target);
     [_scrollView zoomToRect:rect animated:YES];
+}
+
+- (void)handleEdgeTap:(UITapGestureRecognizer *)g {
+    if(_pageLocked||g.state!=UIGestureRecognizerStateRecognized)return;
+    if(_overlay.userInteractionEnabled||_scrollView.zoomScale>1.05f)return;
+    CGPoint p=[g locationInView:_scrollView];
+    CGFloat w=_scrollView.bounds.size.width;
+    if(w<=0)return;
+    if(p.x<=w*.18f)[self previousPage];
+    else if(p.x>=w*.82f)[self nextPage];
+}
+
+- (void)setPageLocked:(BOOL)locked {
+    _pageLocked=locked;
+    [_overlay clearTemporarySelection];
+    _overlay.drawingEnabled=NO;
+    _scrollView.scrollEnabled=!locked;
+    _doubleTapRecognizer.enabled=!locked;
+    _edgeTapRecognizer.enabled=!locked;
+    [self displayCurrentPage];
+}
+
+- (void)applyTheme:(PDFTheme)theme {
+    [AppearanceStore setTheme:theme];
+    _pageView.theme=theme;
+    [_pageView setNeedsDisplay];
 }
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView { _sessionZoomScale=scrollView.zoomScale; [self centerZoomedPage]; }
@@ -191,10 +267,10 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     v.delegate=self;
     [self.navigationController pushViewController:v animated:YES];
 }
-- (void)thumbnailControllerSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
-- (void)searchControllerSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
-- (void)outlineControllerSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
-- (void)documentNavigatorSelectedPage:(NSUInteger)p { if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];} }
+- (void)thumbnailControllerSelectedPage:(NSUInteger)p { [self navigateToPage:p recordHistory:YES]; }
+- (void)searchControllerSelectedPage:(NSUInteger)p { [self navigateToPage:p recordHistory:YES]; }
+- (void)outlineControllerSelectedPage:(NSUInteger)p { [self navigateToPage:p recordHistory:YES]; }
+- (void)documentNavigatorSelectedPage:(NSUInteger)p { [self navigateToPage:p recordHistory:YES]; }
 
 - (void)showBookmarks {
     [_bookmarkSheetPages release];
@@ -229,6 +305,24 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     [s addButtonWithTitle:@"İptal"]; s.cancelButtonIndex=[s numberOfButtons]-1; [s showFromToolbar:_toolbar];
 }
 
+- (void)showCurrentPageHighlights {
+    NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
+    NSMutableArray *indexes=[NSMutableArray array];
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Highlight Düzenle" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
+    s.tag=105;
+    for(NSUInteger i=0;i<[anns count];i++){
+        NSDictionary *a=[anns objectAtIndex:i];
+        if(![[a objectForKey:@"type"] isEqualToString:@"highlight"])continue;
+        [indexes addObject:[NSNumber numberWithUnsignedInteger:i]];
+        NSString *color=[a objectForKey:@"color"]?:@"yellow";
+        [s addButtonWithTitle:[NSString stringWithFormat:@"Highlight %lu — %@",(unsigned long)[indexes count],color]];
+        if([indexes count]>=20)break;
+    }
+    if([indexes count]==0){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Highlight Düzenle" message:@"Bu sayfada highlight yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];return;}
+    [_highlightSheetIndexes release]; _highlightSheetIndexes=[indexes copy];
+    [s addButtonWithTitle:@"İptal"];s.cancelButtonIndex=[s numberOfButtons]-1;[s showFromToolbar:_toolbar];
+}
+
 - (void)showDocumentNavigator {
     DocumentNavigatorViewController *v=[[[DocumentNavigatorViewController alloc] initWithPDFPath:_pdfPath pageCount:_pageCount] autorelease];
     v.delegate=self;
@@ -241,8 +335,14 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     [s showFromToolbar:_toolbar];
 }
 
+- (void)showReadingOptions {
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Okuma Görünümü" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:@"Gündüz",@"Sepya",@"Gece",_pageLocked?@"Sayfa Kilidini Aç":@"Sayfayı Kilitle",nil] autorelease];
+    s.tag=107;
+    [s showFromToolbar:_toolbar];
+}
+
 - (void)beginHighlightWithColor:(NSString *)color {
-    if(!_document||_currentPage<1||_currentPage>_pageCount)return;
+    if(!_document||_currentPage<1||_currentPage>_pageCount||_pageLocked)return;
     CGPDFPageRef page=CGPDFDocumentGetPage(_document,_currentPage);
     NSArray *rects=[PDFTextExtractor normalizedTextRectsForPage:page maxRects:160];
     _overlay.drawingEnabled=NO;
@@ -257,15 +357,30 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     [a show];
 }
 
+- (void)replaceEditingHighlightColor:(NSString *)color {
+    if(_editingHighlightIndex==NSNotFound)return;
+    NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
+    if(_editingHighlightIndex>=[anns count]){_editingHighlightIndex=NSNotFound;return;}
+    NSDictionary *old=[anns objectAtIndex:_editingHighlightIndex];
+    if(![[old objectForKey:@"type"] isEqualToString:@"highlight"]){_editingHighlightIndex=NSNotFound;return;}
+    NSMutableDictionary *updated=[NSMutableDictionary dictionaryWithDictionary:old];
+    [updated setObject:color?color:@"yellow" forKey:@"color"];
+    [AnnotationStore replaceAnnotationAtIndex:_editingHighlightIndex withAnnotation:updated path:_pdfPath page:_currentPage];
+    [[NSUserDefaults standardUserDefaults] setObject:color?color:@"yellow" forKey:LastHighlightColorKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    _editingHighlightIndex=NSNotFound;
+    [_overlay reloadAnnotations];
+}
+
 - (void)showTools {
     UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Araçlar" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:
-                      @"Ara",@"Belge Gezgini",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight Seç",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
+                      @"Ara",@"Belge Gezgini",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight Seç",@"Highlight Düzenle",@"Okuma Görünümü",@"Geri",@"İleri",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
     s.tag=100; [s showFromToolbar:_toolbar];
 }
 
 - (void)actionSheet:(UIActionSheet *)s clickedButtonAtIndex:(NSInteger)b {
     if(s.tag==101){
-        if(b>=0&&(NSUInteger)b<[_bookmarkSheetPages count]&&(NSUInteger)b<24){NSUInteger p=[[_bookmarkSheetPages objectAtIndex:(NSUInteger)b] unsignedIntegerValue];if(p>=1&&p<=_pageCount){_currentPage=p;[self displayCurrentPage];}}
+        if(b>=0&&(NSUInteger)b<[_bookmarkSheetPages count]&&(NSUInteger)b<24){NSUInteger p=[[_bookmarkSheetPages objectAtIndex:(NSUInteger)b] unsignedIntegerValue];[self navigateToPage:p recordHistory:YES];}
         return;
     }
     if(s.tag==102){
@@ -288,6 +403,30 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
         else if(b==4)[self beginHighlightWithColor:@"cyan"];
         return;
     }
+    if(s.tag==105){
+        if(b>=0&&(NSUInteger)b<[_highlightSheetIndexes count]){
+            _editingHighlightIndex=[[_highlightSheetIndexes objectAtIndex:(NSUInteger)b] unsignedIntegerValue];
+            UIActionSheet *e=[[[UIActionSheet alloc] initWithTitle:@"Highlight" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:@"Sil" otherButtonTitles:@"Sarı",@"Yeşil",@"Pembe",@"Turuncu",@"Açık Mavi",nil] autorelease];
+            e.tag=106;[e showFromToolbar:_toolbar];
+        }
+        return;
+    }
+    if(s.tag==106){
+        if(b==0&&_editingHighlightIndex!=NSNotFound){[AnnotationStore removeAnnotationAtIndex:_editingHighlightIndex path:_pdfPath page:_currentPage];_editingHighlightIndex=NSNotFound;[_overlay reloadAnnotations];}
+        else if(b==1)[self replaceEditingHighlightColor:@"yellow"];
+        else if(b==2)[self replaceEditingHighlightColor:@"green"];
+        else if(b==3)[self replaceEditingHighlightColor:@"pink"];
+        else if(b==4)[self replaceEditingHighlightColor:@"orange"];
+        else if(b==5)[self replaceEditingHighlightColor:@"cyan"];
+        return;
+    }
+    if(s.tag==107){
+        if(b==0)[self applyTheme:PDFThemeNormal];
+        else if(b==1)[self applyTheme:PDFThemeSepia];
+        else if(b==2)[self applyTheme:PDFThemeNight];
+        else if(b==3)[self setPageLocked:!_pageLocked];
+        return;
+    }
     if(s.tag!=100)return;
 
     if(b==0){SearchViewController *v=[[[SearchViewController alloc] initWithPDFPath:_pdfPath] autorelease];v.delegate=self;[self.navigationController pushViewController:v animated:YES];}
@@ -296,13 +435,17 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     else if(b==3){OutlineViewController *v=[[[OutlineViewController alloc] initWithItems:[PDFOutlineParser outlineForDocument:_document]] autorelease];v.delegate=self;[self.navigationController pushViewController:v animated:YES];}
     else if(b==4){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfaya Git" message:[NSString stringWithFormat:@"1 - %lu",(unsigned long)_pageCount] delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Git",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setKeyboardType:UIKeyboardTypeNumberPad];a.tag=31;[a show];}
     else if(b==5)[self showBookmarks];
-    else if(b==6){[_overlay clearTemporarySelection];_overlay.drawingEnabled=!_overlay.drawingEnabled;}
+    else if(b==6){if(!_pageLocked){[_overlay clearTemporarySelection];_overlay.drawingEnabled=!_overlay.drawingEnabled;}}
     else if(b==7)[self showHighlightColors];
-    else if(b==8){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfa Notu" message:@"Bu not yalnızca mevcut sayfaya bağlıdır." delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=32;[a show];}
-    else if(b==9)[self showPageNotes];
-    else if(b==10){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"İmza" message:nil delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=30;[a show];}
-    else if(b==11)[self.navigationController pushViewController:[[[PageManagerViewController alloc] initWithPDFPath:_pdfPath] autorelease] animated:YES];
-    else if(b==12){NSString *out=[[_pdfPath stringByDeletingLastPathComponent] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-annotated.pdf",[[_pdfPath lastPathComponent] stringByDeletingPathExtension]]];BOOL ok=[PDFAnnotationExporter exportFlattenedPDFAtPath:_pdfPath toPath:out];UIAlertView *a=[[[UIAlertView alloc] initWithTitle:ok?@"Hazır":@"Hata" message:ok?@"Yeni PDF oluşturuldu.":@"Dışa aktarılamadı." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];}
+    else if(b==8)[self showCurrentPageHighlights];
+    else if(b==9)[self showReadingOptions];
+    else if(b==10)[self goBackReadingLocation];
+    else if(b==11)[self goForwardReadingLocation];
+    else if(b==12){if(!_pageLocked){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfa Notu" message:@"Bu not yalnızca mevcut sayfaya bağlıdır." delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=32;[a show];}}
+    else if(b==13)[self showPageNotes];
+    else if(b==14){if(!_pageLocked){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"İmza" message:nil delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=30;[a show];}}
+    else if(b==15)[self.navigationController pushViewController:[[[PageManagerViewController alloc] initWithPDFPath:_pdfPath] autorelease] animated:YES];
+    else if(b==16){NSString *out=[[_pdfPath stringByDeletingLastPathComponent] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-annotated.pdf",[[_pdfPath lastPathComponent] stringByDeletingPathExtension]]];BOOL ok=[PDFAnnotationExporter exportFlattenedPDFAtPath:_pdfPath toPath:out];UIAlertView *a=[[[UIAlertView alloc] initWithTitle:ok?@"Hazır":@"Hata" message:ok?@"Yeni PDF oluşturuldu.":@"Dışa aktarılamadı." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];}
 }
 
 - (void)alertView:(UIAlertView *)a clickedButtonAtIndex:(NSInteger)b {
@@ -313,7 +456,7 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     }
     else if(a.tag==31&&b==1){
         NSInteger p=[[[a textFieldAtIndex:0] text] integerValue];
-        if(p>=1&&(NSUInteger)p<=_pageCount){_currentPage=(NSUInteger)p;[self displayCurrentPage];}
+        if(p>=1&&(NSUInteger)p<=_pageCount)[self navigateToPage:(NSUInteger)p recordHistory:YES];
         else {UIAlertView *e=[[[UIAlertView alloc] initWithTitle:@"Geçersiz Sayfa" message:[NSString stringWithFormat:@"1 ile %lu arasında bir sayfa girin.",(unsigned long)_pageCount] delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[e show];}
     }
     else if(a.tag==32&&b==1){
@@ -348,6 +491,7 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     [super didReceiveMemoryWarning];
     [_bookmarkSheetPages release]; _bookmarkSheetPages=nil;
     [_noteSheetIndexes release]; _noteSheetIndexes=nil;
+    [_highlightSheetIndexes release]; _highlightSheetIndexes=nil;
     [_overlay clearTemporarySelection];
     if(!self.view.window)_pageView.pdfPage=NULL;
 }
@@ -358,7 +502,11 @@ static NSString * const LastHighlightColorKey=@"LastHighlightColor";
     [_pdfPath release];
     [_bookmarkSheetPages release];
     [_noteSheetIndexes release];
+    [_highlightSheetIndexes release];
     [_doubleTapRecognizer release];
+    [_edgeTapRecognizer release];
+    [_backHistory release];
+    [_forwardHistory release];
     [_scrollView release];
     [_pageView release];
     [_overlay release];
