@@ -22,6 +22,14 @@ Before implementation every feature is classified:
 - **Yellow**: useful but requires hard bounds, page-local processing and physical-device profiling.
 - **Red**: reject for on-device implementation.
 
+Before memory classification, every feature also passes an **ownership gate**:
+
+1. Is the underlying operation specific to PDF or lightweight read-only text reading?
+2. Does another iPad1 companion app already own the operation?
+3. Can PDFReader launch that specialist through URL handoff/callback instead of duplicating its subsystem?
+
+If another companion app owns the work, PDFReader implements only the handoff. See `COMPANION_APP_GUIDANCE.md`.
+
 Red examples:
 - OCR;
 - AI/ML;
@@ -150,23 +158,39 @@ The application family is intentionally modular:
 
 ```text
 iPad1Files          -> filesystem backbone
-iPad1FTPDownloader  -> FTP/network transfer specialist
+iPad1FTPDownloader  -> HTTP/FTP/WebDAV/network transfer specialist
+iPad1Terminal       -> shell/system command specialist
+iPad1VNC            -> remote desktop specialist
 iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 ```
 
 ### iPad1Files owns
 - browse/copy/move/rename/delete;
 - shared folders;
-- favorites;
-- Open With;
-- file classification/organization.
+- file-level favorites;
+- Open With / file picker;
+- file classification/organization;
+- ZIP/archive management;
+- general filesystem search.
 
 ### iPad1FTPDownloader owns
+- HTTP/HTTPS/FTP/WebDAV transfer work;
 - FTP remote browse;
 - download/upload;
 - queue/resume/progress/speed;
 - saved servers;
-- remote file commands.
+- remote file commands;
+- future SMB/SFTP transfer support only if a concrete need and real iPad profiling justify it.
+
+### iPad1Terminal owns
+- shell/PTY behavior;
+- command execution;
+- system utilities and terminal-oriented system workflows.
+
+### iPad1VNC owns
+- remote desktop sessions;
+- remote screen rendering;
+- VNC keyboard/mouse forwarding and session controls.
 
 ### iPad1PDFReader owns
 - PDF rendering/read UX;
@@ -174,9 +198,13 @@ iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 - bookmark/outline;
 - annotations;
 - page management/export;
-- lightweight read-only rendering of supported plain-text files handed off by iPad1Files.
+- PDF reading locations and recent-document history;
+- lightweight read-only rendering of supported plain-text files handed off by iPad1Files;
+- receiving document paths and launching companion specialists through handoff.
 
 Text Reader must not grow into a general editor or file manager without a separate architectural decision.
+
+General file favorites do not belong in PDFReader; only PDF-specific bookmarks/reading locations and recent-document history do.
 
 ## Shared storage
 Canonical root:
@@ -192,6 +220,8 @@ PDFReader directly scans:
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
+This direct scan is a bounded PDF-library convenience only. It must not evolve into a filesystem browser.
+
 Text files are primarily opened by iPad1Files handoff and should be opened in-place.
 
 Cross-app contract:
@@ -200,14 +230,20 @@ Cross-app contract:
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
+Recommended picker contract:
+
+```text
+ipad1files://pick?callback=ipad1pdf
+```
+
 The receiver checks the extension and routes PDF to PDF Reader or supported text to Text Reader. Shared files open in-place where safe; avoid duplicate physical copies.
 
 ## Networking
-Existing HTTP/FTP/WebDAV code in PDFReader is **maintenance-only**.
+Existing HTTP/FTP/WebDAV code in PDFReader is **compatibility-only and scheduled for retirement after companion handoff is physically proven**.
 
-Do not expand it merely for feature parity. Prefer iPad1FTPDownloader/iPad1Files handoff.
+Do not expand it for feature parity. Prefer iPad1FTPDownloader/iPad1Files handoff.
 
-SMB/SFTP libraries are not bundled unless a future concrete need plus real iPad RAM profiling justifies them.
+SMB/SFTP libraries are not bundled in PDFReader.
 
 ## Memory management
 Project is MRC.
@@ -241,5 +277,5 @@ Rules:
 - `PDFAnnotationExporter` — flattened export.
 - `PageManager` / `PageManagerViewController` — safe page operations.
 - `PDFOutlineParser` / `OutlineViewController` — outline handling.
-- legacy network classes — compatibility only.
+- legacy network classes — compatibility only until handoff retirement.
 - `MemoryBudget` — explicit iPad 1 limits.
