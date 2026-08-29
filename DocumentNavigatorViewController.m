@@ -10,7 +10,7 @@
     if((self=[super initWithStyle:UITableViewStyleGrouped])) {
         _pdfPath=[path copy];
         _pageCount=pageCount;
-        self.title=@"Belge";
+        self.title=@"Gezinti Merkezi";
     }
     return self;
 }
