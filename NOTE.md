@@ -1,0 +1,1 @@
+Runtime completion claims require physical iPad 1 validation.
