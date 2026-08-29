@@ -1,0 +1,1 @@
+See COMPANION_APP_GUIDANCE.md and COMPETITOR_ROUTING.md before every feature change.
