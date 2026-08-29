@@ -8,12 +8,12 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title=@"PDF Dosyaları";
-    self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Ağ" style:UIBarButtonItemStylePlain target:self action:@selector(showNetwork)] autorelease];
+    self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Dosyalar" style:UIBarButtonItemStylePlain target:self action:@selector(showFiles)] autorelease];
     _emptyLabel=[[UILabel alloc] initWithFrame:CGRectZero];
     _emptyLabel.textAlignment=UITextAlignmentCenter;
     _emptyLabel.numberOfLines=0;
     _emptyLabel.backgroundColor=[UIColor clearColor];
-    _emptyLabel.text=@"Henüz PDF yok.\n\niPad1Files/Downloads veya PDFs klasörüne PDF koyun\nya da iTunes File Sharing kullanın.";
+    _emptyLabel.text=@"Henüz PDF yok.\n\niPad1Files/Downloads veya PDFs klasörüne PDF koyun\nya da Dosyalar ile iPad1Files'tan seçin.";
     [self.tableView addSubview:_emptyLabel];
     [self reloadPDFList];
 }
@@ -99,6 +99,17 @@
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)i {
     NSDictionary *item=[_pdfFiles objectAtIndex:i.row];
     [self openPDFAtPath:[item objectForKey:@"path"]];
+}
+
+- (void)showFiles {
+    NSURL *url=[NSURL URLWithString:@"ipad1files://pick?callback=ipad1pdf"];
+    UIApplication *app=[UIApplication sharedApplication];
+    if(url&&[app canOpenURL:url]){
+        [app openURL:url];
+        return;
+    }
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"iPad1Files bulunamadı" message:@"Dosya seçmek için iPad1Files uygulaması gerekli." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+    [a show];
 }
 
 - (void)showNetwork { [self.navigationController pushViewController:[[[NetworkCenterViewController alloc] initWithStyle:UITableViewStyleGrouped] autorelease] animated:YES]; }
