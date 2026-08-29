@@ -1,0 +1,1 @@
+Permanent rule: never implement another companion app's specialty inside PDFReader; use handoff/callback instead.
