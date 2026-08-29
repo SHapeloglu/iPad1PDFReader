@@ -12,8 +12,15 @@
     CGFloat _sessionZoomScale;
     NSArray *_bookmarkSheetPages;
     NSArray *_noteSheetIndexes;
+    NSArray *_highlightSheetIndexes;
     NSUInteger _editingAnnotationIndex;
+    NSUInteger _editingHighlightIndex;
     UITapGestureRecognizer *_doubleTapRecognizer;
+    UITapGestureRecognizer *_edgeTapRecognizer;
+    NSMutableArray *_backHistory;
+    NSMutableArray *_forwardHistory;
+    BOOL _restoringHistory;
+    BOOL _pageLocked;
 }
 - (id)initWithPDFPath:(NSString *)path;
 @end
