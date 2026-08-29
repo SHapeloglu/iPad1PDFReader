@@ -1,0 +1,1 @@
+PDFReader owns PDF reading; companion apps own files, transfers, terminal and VNC.
