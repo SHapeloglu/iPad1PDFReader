@@ -1,13 +1,14 @@
 # INTEGRATION.md
 
 ## Purpose
-This file is the authoritative integration contract between:
+This file is the authoritative integration contract between the iPad 1 suite applications relevant to document/media handoff:
 
 - `SHapeloglu/iPad1Files`
 - `SHapeloglu/iPad1FTPDownloader`
 - `SHapeloglu/iPad1PDFReader`
+- `SHapeloglu/iPad1Player`
 
-The goal is to make the three applications complement each other without duplicating engines, storage or memory-heavy features.
+The goal is to make the applications complement each other without duplicating engines, storage or memory-heavy features.
 
 ## Platform contract
 All integrations must preserve:
@@ -31,20 +32,31 @@ Owns:
 - favorites;
 - file information;
 - local search;
-- Open With / cross-app launch.
+- Open With / cross-app launch;
+- ordinary extension-based suite routing.
 
-Must not become a PDF engine or FTP engine.
+Must not become a PDF engine, media player or FTP engine.
 
 ### iPad1FTPDownloader
 Owns:
+- HTTP/HTTPS/FTP/WebDAV transfer work;
 - FTP connection and remote browsing;
 - download/upload;
 - progress/speed;
-- queue/resume where supported;
+- queue/resume/retry where supported;
 - saved servers;
 - remote file operations.
 
-Must not become a general file manager or PDF reader.
+Must not become a general file manager, PDF reader or media player.
+
+### iPad1Player
+Owns:
+- video/audio playback;
+- media decoding;
+- subtitle discovery/rendering;
+- playback controls and media-session behavior.
+
+Must not become a general file manager, downloader or PDF reader.
 
 ### iPad1PDFReader
 Owns:
@@ -58,6 +70,8 @@ Owns:
 - lightweight read-only viewing of supported plain-text files.
 
 Text Reader v1 does **not** own editing, save, rename, delete, copy/move, syntax parsing or file management.
+
+PDFReader is not the suite's normal file router. Normal extension mapping belongs in iPad1Files. PDFReader may only reject or safely hand off a misrouted path as a fallback.
 
 ## Canonical shared filesystem
 Owned by iPad1Files:
@@ -81,26 +95,26 @@ Temp/
 AppData/
 ```
 
-## FTP download contract
+## Download contract
 Default destination for iPad1FTPDownloader should be:
 
 ```text
 /var/mobile/Media/iPad1Files/Downloads/
 ```
 
-A downloaded file must not be duplicated into a second FTP-private download folder merely for integration.
+A downloaded file must not be duplicated into a second downloader-private download folder merely for integration.
 
 Example PDF:
 
 ```text
-FTP server
+FTP/HTTP server
   -> iPad1FTPDownloader
   -> /var/mobile/Media/iPad1Files/Downloads/book.pdf
   -> iPad1Files sees the same physical file
   -> iPad1PDFReader opens the same physical file
 ```
 
-The same single-file principle applies to supported text files.
+The same single-file principle applies to supported text and media files.
 
 ## PDFReader discovery contract
 PDFReader should directly discover at least:
@@ -114,7 +128,9 @@ Shared PDFs should open in-place where permissions allow.
 
 Text files do not need to be duplicated into PDFReader storage. They are primarily opened by iPad1Files handoff and should open in-place.
 
-## Handoff URL scheme
+This direct discovery is a bounded PDF-library convenience and must not evolve into a general filesystem browser.
+
+## PDFReader receiver contract
 Authoritative receiver contract remains:
 
 ```text
@@ -129,7 +145,7 @@ Rules:
 - receiver validates file existence before opening;
 - `.pdf` routes to existing PDF Reader;
 - supported text extensions route to Text Reader;
-- unsupported extensions show a user-visible unsupported-file message;
+- unsupported extensions show a user-visible unsupported-file message or may use a narrowly scoped known-specialist fallback;
 - shared iPad1Files files must not be copied solely because of handoff;
 - ordinary external `Open In` files may still be copied to an app-owned persistent location when necessary.
 
@@ -165,9 +181,39 @@ Extension mapping in iPad1Files may route:
 .sh   -> iPad1PDFReader / Text Reader
 .ini  -> iPad1PDFReader / Text Reader
 .conf -> iPad1PDFReader / Text Reader
+.mkv  -> iPad1Player
+.mp4  -> iPad1Player
+.mov  -> iPad1Player
+.m4v  -> iPad1Player
+.avi  -> iPad1Player
 ```
 
-Future mappings belong in iPad1Files registry rather than hard-coding every app relationship into PDFReader.
+Future mappings belong in the iPad1Files registry rather than hard-coding every app relationship into PDFReader.
+
+## PDF-specific media handoff
+PDFReader does not decode/play media.
+
+If a PDF interaction resolves to an **already-local media file**, PDFReader may hand it to Player using:
+
+```text
+ipad1player://open?path=<percent-encoded-absolute-path>
+```
+
+Typical supported local-video fallback extensions:
+
+```text
+.mkv .mp4 .mov .m4v .avi
+```
+
+This path is allowed only as a PDF-specific integration/fallback. It does not transfer normal suite routing ownership from iPad1Files to PDFReader.
+
+If the media target is remote and requires downloading first:
+
+```text
+PDFReader -> iPad1FTPDownloader -> shared storage -> iPad1Player
+```
+
+PDFReader must not implement the transfer itself.
 
 ## Text Reader policy
 Version 1 is intentionally small:
@@ -185,7 +231,7 @@ No editing/save, syntax highlighting, Markdown rendering, JSON/XML parsing, OCR,
 ## Networking policy
 Existing lightweight HTTP/FTP/WebDAV code inside PDFReader is maintenance-only.
 
-New transfer features should normally go to iPad1FTPDownloader or a future dedicated network component instead of PDFReader.
+New transfer features should normally go to iPad1FTPDownloader instead of PDFReader.
 
 Do not add `libsmb2`, `libssh2`, cloud SDKs or other heavy stacks to PDFReader merely to match competitors.
 
@@ -213,7 +259,7 @@ iPad1FTPDownloads/book.pdf
 + PDFReader/Documents/book.pdf
 ```
 
-when all three apps can safely reference the shared file instead.
+when all applications can safely reference the shared file instead.
 
 ## Change-control rule
 Any change to:
