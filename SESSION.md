@@ -123,9 +123,9 @@ Present in source:
 - bounded thumbnails;
 - page-by-page Reflow;
 - notes/drawing/highlight/signature;
-- bounded document navigator;
 - incremental search with max 40 retained results;
-- outline;
+- bounded outline parsing with max 80 entries;
+- unified bounded `Gezinti Merkezi` sections: İçindekiler / Yer İmleri / Notlar / Highlight'lar;
 - Page Manager export flow;
 - shared iPad1Files PDF discovery;
 - `ipad1pdf://` receiver;
@@ -134,7 +134,10 @@ Present in source:
 - bounded reading-location Back/Forward history;
 - Day/Sepia/Night appearance modes;
 - Page Lock;
-- edge-tap navigation support.
+- edge-tap navigation support;
+- low-memory Fit Page;
+- low-memory Fit Width;
+- clearer `Konum Geri / Konum İleri` labels.
 
 ## Text Reader v1 architecture
 `TextReaderViewController` remains separate from `PDFReaderViewController`.
@@ -213,6 +216,7 @@ PDF:
 - one active full page render;
 - thumbnail cache max **8**;
 - search results max **40**;
+- outline parse max **80**;
 - navigator annotation summary max **80**, max **40 per kind**;
 - Reflow page-scoped;
 - no whole-document bitmap/text/glyph cache.
@@ -227,9 +231,9 @@ Preferred ranges:
 - special operations ideally remain well below **70–90 MB**.
 
 ## Physical device validation status
-Current `feature/text-reader-v1` package has been clean-built, copied to and launched on the physical iPad 1.
+Current previously installed `feature/text-reader-v1` package has been clean-built, copied to and launched on the physical iPad 1.
 
-Physically PASS:
+Physically PASS from the prior installed build:
 - build/package;
 - install/launch;
 - PDF open/render;
@@ -244,17 +248,29 @@ Physically PASS:
 - Highlight delete;
 - scanned/image-page region-highlight fallback.
 
-Still requiring explicit physical validation before being called complete:
+Source changes made after that physical build still require a new clean build + device validation:
+- Fit Page;
+- Fit Width;
+- `Konum Geri / Konum İleri` no-history alerts/labels;
+- unified `Gezinti Merkezi` with İçindekiler;
+- bounded outline parser max 80;
+- edge-tap navigation if not separately tested.
+
+Still requiring explicit handoff validation:
 - iPad1Files picker handoff end-to-end;
 - PDF opened through picker using the same physical file;
 - Text Reader opened through picker;
 - paths containing spaces/Turkish characters;
 - unsupported-extension fallback;
-- Text Reader UTF-8/search/wrap/2 MiB limit regression;
-- edge-tap navigation if not separately tested.
+- Text Reader UTF-8/search/wrap/2 MiB limit regression.
+
+## Companion-app work still external
+`ipad1files://pick?callback=ipad1pdf` receiver implementation belongs to **iPad1Files**, not PDFReader. The picker must stay under `/var/mobile/Media/iPad1Files`, preserve callback while navigating, return the same physical file path, and must not expose general system directories.
+
+No new downloader or media-player subsystem is needed in PDFReader for the current feature set.
 
 ## Build
-Successful package target:
+Expected package target:
 
 ```text
 packages/com.olap.ipad1pdfreader_3.1.0_iphoneos-arm.deb
@@ -275,14 +291,18 @@ ld: warning: building for iOS 5.1.0 is deprecated
 ```
 
 ## Immediate next action
-1. Complete iPad1Files picker implementation/validation under canonical root `/var/mobile/Media/iPad1Files`.
-2. Test `PDFReader -> Dosyalar -> iPad1Files picker -> PDF -> PDFReader` using the same physical file.
-3. Test a supported `.txt`/`.md` through the same callback into `TextReaderViewController`.
-4. Test spaces and Turkish characters in paths.
-5. Verify no duplicate file is created during handoff.
-6. Run remaining Text Reader physical regressions and edge-tap test.
-7. Only after handoff passes, remove/retire legacy PDFReader network UI/code references in a controlled change.
-8. Do not expand PDFReader into iPad1Files, iPad1FTPDownloader or iPad1Player responsibilities.
+1. Pull latest `feature/text-reader-v1`.
+2. Clean-build with the legacy toolchain.
+3. Install on physical iPad 1.
+4. Validate Fit Page and Fit Width.
+5. Validate `Gezinti Merkezi`: İçindekiler / Yer İmleri / Notlar / Highlight'lar and page jumps.
+6. Validate edge-tap navigation and confirm no zoom/annotation gesture regression.
+7. Complete iPad1Files picker implementation/validation under canonical root `/var/mobile/Media/iPad1Files`.
+8. Test `PDFReader -> Dosyalar -> iPad1Files picker -> PDF -> PDFReader` using the same physical file.
+9. Test a supported `.txt`/`.md` through the same callback into `TextReaderViewController`.
+10. Test spaces and Turkish characters in paths and verify no duplicate file is created.
+11. Only after handoff passes, remove/retire legacy PDFReader network UI/code references in a controlled change.
+12. Do not expand PDFReader into iPad1Files, iPad1FTPDownloader or iPad1Player responsibilities.
 
 ## New-chat starter
 
