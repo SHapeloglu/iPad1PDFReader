@@ -31,7 +31,7 @@ First version deliberately excludes:
 - [x] no OCR/AI/ML.
 
 ## Priority 1 — current PDF reader UX, iPad 1 safe
-Already implemented on current branch:
+Implemented on current branch:
 - [x] bounded reading-location back/forward, cap 20;
 - [x] Day / Sepia / Night themes;
 - [x] Page Lock;
@@ -40,11 +40,17 @@ Already implemented on current branch:
 - [x] low-memory Fit Page control;
 - [x] low-memory Fit Width control;
 - [x] rename ambiguous `Geri/İleri` to `Konum Geri/Konum İleri`;
-- [x] rename `Belge Gezgini` menu entry to `Gezinti Merkezi`;
-- [x] unify bounded `İçindekiler / Yer İmleri / Notlar / Highlight'lar` inside `Gezinti Merkezi`;
-- [x] hard-bound outline parsing to 80 entries for iPad 1 safety.
+- [x] unified bounded `Gezinti Merkezi` with `İçindekiler / Yer İmleri / Notlar / İşaretler`;
+- [x] hard-bound outline parsing to 80 entries;
+- [x] direct current-page hit-test for note/highlight/underline/strikeout, cap 80 annotations;
+- [x] direct note tap -> view/edit/delete flow;
+- [x] direct text-mark tap -> recolor/delete flow;
+- [x] page-local Underline using existing active-page text geometry;
+- [x] page-local Strikeout using existing active-page text geometry;
+- [x] flattened export support for Underline / Strikeout;
+- [x] scanned/image pages reject Underline / Strikeout without OCR.
 
-Physical iPad 1 PASS already observed:
+Physical iPad 1 PASS already observed on earlier package:
 - [x] PDF open/render;
 - [x] reading-location back/forward;
 - [x] Day / Sepia / Night;
@@ -57,18 +63,23 @@ Needs physical validation after latest build:
 - [ ] Fit Width;
 - [ ] no-history alerts for Konum Geri / Konum İleri;
 - [ ] edge-tap previous/next page behavior and gesture conflicts;
-- [ ] Gezinti Merkezi shows İçindekiler / Yer İmleri / Notlar / Highlight'lar correctly;
-- [ ] outline list remains responsive with large-outline PDFs.
+- [ ] Gezinti Merkezi sections render correctly;
+- [ ] direct tap Highlight -> recolor/delete;
+- [ ] direct tap Note -> view/edit/delete;
+- [ ] Underline create/redraw/recolor/delete;
+- [ ] Strikeout create/redraw/recolor/delete;
+- [ ] Underline / Strikeout persist after page change and reopen;
+- [ ] Underline / Strikeout flattened export;
+- [ ] direct annotation tap does not break scroll/zoom/edge navigation;
+- [ ] image/scanned PDF safely rejects Underline / Strikeout without OCR.
 
-## Priority 2 — annotation/document UX after current build is stable
-- [ ] Tap existing highlight -> change color / delete, only if touch hit-testing remains lightweight and does not interfere with scroll/zoom.
-- [ ] Tap note marker -> open/edit/delete directly, only if gesture conflicts are clean on physical iPad 1.
-- [ ] Add selected-text Copy only if it can reuse page-local selection state without a whole-document text index.
-- [ ] Consider optional bookmark titles only if the existing bookmark store can remain compact and backward-compatible.
+## Priority 2 — next PDF-only improvements after current build is stable
+- [ ] Named PDF bookmarks with short optional title, bounded/backward-compatible persistence.
+- [ ] Simple line / rectangle / ellipse shapes only if physical gesture testing remains clean.
+- [ ] Selected-text Copy only if it safely reuses page-local selection state.
 
 ## Priority 3 — candidate PDF-only improvements requiring profiling
 - [ ] Manual margin crop / visible-area crop. Do not implement automatic whole-document crop analysis.
-- [ ] Consider page-view polish only if it does not require multi-page full-resolution caching.
 - [ ] PDF forms only after a separate feasibility review; no heavy replacement PDF engine.
 
 ## Priority 4 — memory/stability validation
