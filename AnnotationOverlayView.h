@@ -5,6 +5,7 @@
     BOOL _drawingEnabled;
     BOOL _highlightSelectionEnabled;
     NSString *_highlightColorName;
+    NSString *_selectionAnnotationType;
     NSArray *_pageTextRects;
     NSMutableArray *_points;
     CGPoint _highlightStart;
@@ -16,6 +17,7 @@
 @property(nonatomic,assign) BOOL drawingEnabled;
 @property(nonatomic,assign) BOOL highlightSelectionEnabled;
 @property(nonatomic,copy) NSString *highlightColorName;
+@property(nonatomic,copy) NSString *selectionAnnotationType;
 @property(nonatomic,copy) NSArray *pageTextRects;
 - (void)reloadAnnotations;
 - (void)clearTemporarySelection;
