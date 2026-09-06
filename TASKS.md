@@ -17,61 +17,62 @@ Implementation target:
 - [x] Keep `ipad1pdf://open?path=...` and route by extension.
 - [x] Open iPad1Files paths in-place with no duplicate copy.
 - [x] Unsupported extension alert.
-- [ ] Clean-build with legacy Theos/iPhoneOS6.1 SDK.
-- [ ] Fix only actual legacy compile issues without changing platform constraints.
-- [ ] Install on physical iPad 1.
-- [ ] Run Text Reader tests in `TESTING.md`.
-- [ ] Run PDF regression tests after Text Reader validation.
+- [x] Clean-build with legacy Theos/iPhoneOS6.1 SDK.
+- [x] Install latest combined branch on physical iPad 1.
+- [ ] Run remaining Text Reader tests in `TESTING.md`.
+- [ ] Complete iPad1Files picker callback validation.
 
 First version deliberately excludes:
-- [ ] no editing/save;
-- [ ] no syntax highlighting;
-- [ ] no Markdown renderer;
-- [ ] no JSON/XML parser;
-- [ ] no background/full-document index;
-- [ ] no OCR/AI/ML.
+- [x] no editing/save;
+- [x] no syntax highlighting;
+- [x] no Markdown renderer;
+- [x] no JSON/XML parser;
+- [x] no background/full-document index;
+- [x] no OCR/AI/ML.
 
-## Priority 1 — finish and prove current PDF development head
-- [x] Legacy clean-build of page-local highlight branch completed before Text Reader branch creation.
-- [ ] Install latest combined branch on physical iPad 1.
-- [ ] Verify shared PDFs from iPad1Files open without duplicate copies.
-- [ ] Verify `ipad1pdf://open?path=...` PDF handoff.
-- [ ] Verify zoom centering, zoom persistence, double-tap and page-number navigation.
-- [ ] Verify Belge Gezgini, search progress/cancel, outline page jumps and explicit Page Manager save.
+## Priority 1 — current PDF reader UX, iPad 1 safe
+Already implemented on current branch:
+- [x] bounded reading-location back/forward, cap 20;
+- [x] Day / Sepia / Night themes;
+- [x] Page Lock;
+- [x] highlight recolor/delete;
+- [x] scanned/image PDF region-highlight fallback without OCR;
+- [x] low-memory Fit Page control;
+- [x] low-memory Fit Width control;
+- [x] rename ambiguous `Geri/İleri` to `Konum Geri/Konum İleri`;
+- [x] rename `Belge Gezgini` menu entry to `Gezinti Merkezi`.
 
-## Priority 2 — real text highlight + fluorescent palette physical validation
-Current code contains bounded page-local text-geometry/highlight work, but it is not fully device-proven.
+Physical iPad 1 PASS already observed:
+- [x] PDF open/render;
+- [x] reading-location back/forward;
+- [x] Day / Sepia / Night;
+- [x] Page Lock;
+- [x] highlight create/edit/recolor/delete;
+- [x] region-highlight fallback.
 
-- [ ] Verify text-selection highlight only for the active page.
-- [ ] Verify no whole-document text/glyph index.
-- [ ] Verify temporary selection geometry clears on page change.
-- [ ] Verify temporary selection state clears on memory warning.
-- [ ] Verify fluorescent colors:
-  - [ ] yellow
-  - [ ] green
-  - [ ] pink
-  - [ ] orange
-  - [ ] cyan/light blue
-- [ ] Verify last-used highlight color persistence.
-- [ ] Verify compact highlight annotation data: page + rect(s) + color.
-- [ ] Verify rectangular region highlight fallback for scanned/image PDFs.
-- [ ] Verify no OCR starts when selectable text is unavailable.
-- [ ] Verify flattened export preserves chosen highlight colors.
+Needs physical validation after latest build:
+- [ ] Fit Page;
+- [ ] Fit Width;
+- [ ] no-history alerts for Konum Geri / Konum İleri;
+- [ ] edge-tap previous/next page behavior and gesture conflicts.
 
-## Priority 3 — annotation/document UX after current phases are stable
-- [ ] Tap existing highlight -> change color / delete.
-- [ ] Tap note marker -> open note directly.
-- [ ] Include Outline/Contents in unified document navigation if low-cost.
-- [ ] Add bounded reading history/back-forward, hard small cap (for example 10–20 locations).
-- [ ] Consider left/right edge page taps only if they do not conflict with zoom/annotation gestures.
-- [ ] Add text copy only if it can safely reuse page-local selection state.
+## Priority 2 — annotation/document UX after current build is stable
+- [ ] Tap existing highlight -> change color / delete, only if touch hit-testing remains lightweight and does not interfere with scroll/zoom.
+- [ ] Tap note marker -> open/edit/delete directly, only if gesture conflicts are clean on physical iPad 1.
+- [ ] Keep Outline / Bookmark / Notes / Highlights under a unified bounded `Gezinti Merkezi` experience.
+- [ ] Add selected-text Copy only if it can reuse page-local selection state without a whole-document text index.
+
+## Priority 3 — candidate PDF-only improvements requiring profiling
+- [ ] Manual margin crop / visible-area crop. Do not implement automatic whole-document crop analysis.
+- [ ] Consider page-view polish only if it does not require multi-page full-resolution caching.
+- [ ] PDF forms only after a separate feasibility review; no heavy replacement PDF engine.
 
 ## Priority 4 — memory/stability validation
 - [ ] 100+ page thumbnail scrolling; cache remains max 8.
 - [ ] PDF search results remain max 40.
 - [ ] Search/cancel repeatedly; no progressive growth.
 - [ ] Reflow remains page-local.
-- [ ] Belge Gezgini remains bounded to 80 annotation-summary items, max 40 per kind.
+- [ ] Gezinti Merkezi remains bounded to 80 annotation-summary items, max 40 per kind.
 - [ ] Open/close several large PDFs sequentially.
 - [ ] Zoom/page-change for 10 minutes.
 - [ ] Rotate while zoomed repeatedly.
@@ -80,28 +81,36 @@ Current code contains bounded page-local text-geometry/highlight work, but it is
 - [ ] Repeatedly open/close supported text files under 2 MiB without progressive growth.
 - [ ] Verify >2 MiB text files are rejected before `UITextView` load.
 
-## Companion-app boundary — do not duplicate
+## Companion-app boundary — mandatory ownership gate
 ### Leave to iPad1Files
-- [ ] Do not implement general copy/move/rename/delete browser features in PDFReader.
-- [ ] Do not duplicate favorites/file organization/Open With registry.
+- [x] Do not implement general copy/move/rename/delete browser features in PDFReader.
+- [x] Do not duplicate favorites/file organization/Open With registry.
+- [x] Normal suite file-type routing belongs in iPad1Files.
 
-### Leave to iPad1FTPDownloader
-- [ ] Do not expand FTP browsing/downloading/upload/queue/resume in PDFReader.
-- [ ] Existing PDFReader FTP/WebDAV code is maintenance-only.
+### Leave to iPad1FTPDownloader / iPad1Downloader
+- [x] Do not expand HTTP/HTTPS/FTP/WebDAV browse/download/upload/queue/resume in PDFReader.
+- [x] Existing PDFReader network code remains compatibility-only pending handoff retirement.
+
+### Leave to iPad1Player
+- [x] Do not decode/play video or audio inside PDFReader.
+- [ ] A PDF link that resolves to an already-local media file may later hand off to `ipad1player://open?path=...`; no media engine belongs here.
 
 ## Explicitly out of scope on-device
-- [ ] No OCR engine.
-- [ ] No AI/ML inference.
-- [ ] No whole-document high-resolution bitmap cache.
-- [ ] No persistent full-document PDF text index.
-- [ ] No large background indexing service.
-- [ ] No modern cloud-provider SDKs.
-- [ ] No SMB/SFTP library merely for competitor parity.
-- [ ] No heavy replacement PDF engine without measured physical-device proof.
+- [x] No OCR engine.
+- [x] No AI/ML inference.
+- [x] No whole-document high-resolution bitmap cache.
+- [x] No persistent full-document PDF text index.
+- [x] No large background indexing service.
+- [x] No modern cloud-provider SDKs.
+- [x] No SMB/SFTP library merely for competitor parity.
+- [x] No heavy replacement PDF engine without measured physical-device proof.
+- [x] No general file manager.
+- [x] No download manager.
+- [x] No media player.
 
 ## Definition of done
 A feature is complete only when:
-- it builds with the legacy target;
+- it builds with `armv7 / iOS 5.1` legacy target;
 - it runs on physical iPad 1;
 - memory use is bounded;
 - relevant `TESTING.md` checks pass;
