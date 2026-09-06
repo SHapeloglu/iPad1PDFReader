@@ -14,7 +14,8 @@ A feature belongs to the application whose specialty owns the underlying operati
 - file-level favorites;
 - general filesystem search;
 - ZIP/archive management;
-- Open With and file picker responsibilities.
+- Open With and file picker responsibilities;
+- ordinary extension-based routing between suite applications.
 
 PDFReader integration should use URL handoff / callback, opening the same physical file in-place whenever safe.
 
@@ -36,6 +37,31 @@ ipad1pdf://open?path=<percent-encoded-absolute-path>
 - future SMB/SFTP transfer support if justified by physical-device profiling.
 
 PDFReader should launch the transfer specialist instead of implementing or expanding its own network engine. Existing PDFReader HTTP/FTP/WebDAV code is compatibility-only and should be removed after handoff regression is proven.
+
+## iPad1Player owns
+
+- video/audio decode and playback;
+- local media playback UI;
+- subtitle discovery/rendering;
+- media-specific playback controls and behavior.
+
+PDFReader must not play video or audio itself.
+
+A narrow PDF-specific integration is allowed when a PDF interaction resolves to an **already-local media file**. In that case PDFReader may hand the same physical file to Player, for example:
+
+```text
+ipad1player://open?path=<percent-encoded-absolute-path>
+```
+
+Typical local video extensions may include:
+
+```text
+.mkv .mp4 .mov .m4v .avi
+```
+
+This is a fallback/integration path, not a general routing table owned by PDFReader. Ordinary file-type routing belongs to iPad1Files.
+
+If a PDF media link points to a network resource that must first be downloaded, PDFReader must not download it; transfer ownership remains with iPad1FTPDownloader.
 
 ## iPad1Terminal owns
 
@@ -69,7 +95,10 @@ No VNC subsystem belongs in PDFReader.
 - PDF page rotate/delete/reorder/export;
 - reading history and appearance;
 - lightweight, read-only TextReaderViewController for supported plain text files;
-- receiving document paths from companion apps.
+- receiving PDF/text document paths from companion apps;
+- narrowly scoped handoff to another specialist when a PDF-specific interaction genuinely requires it.
+
+PDFReader is not the suite's normal file router. If it receives an unsupported/misrouted path directly, it may safely reject it or perform a known specialist fallback, but it must not grow a general file-type registry.
 
 ## Important naming distinction
 
