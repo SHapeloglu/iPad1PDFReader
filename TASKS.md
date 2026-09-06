@@ -40,7 +40,9 @@ Already implemented on current branch:
 - [x] low-memory Fit Page control;
 - [x] low-memory Fit Width control;
 - [x] rename ambiguous `Geri/İleri` to `Konum Geri/Konum İleri`;
-- [x] rename `Belge Gezgini` menu entry to `Gezinti Merkezi`.
+- [x] rename `Belge Gezgini` menu entry to `Gezinti Merkezi`;
+- [x] unify bounded `İçindekiler / Yer İmleri / Notlar / Highlight'lar` inside `Gezinti Merkezi`;
+- [x] hard-bound outline parsing to 80 entries for iPad 1 safety.
 
 Physical iPad 1 PASS already observed:
 - [x] PDF open/render;
@@ -54,13 +56,15 @@ Needs physical validation after latest build:
 - [ ] Fit Page;
 - [ ] Fit Width;
 - [ ] no-history alerts for Konum Geri / Konum İleri;
-- [ ] edge-tap previous/next page behavior and gesture conflicts.
+- [ ] edge-tap previous/next page behavior and gesture conflicts;
+- [ ] Gezinti Merkezi shows İçindekiler / Yer İmleri / Notlar / Highlight'lar correctly;
+- [ ] outline list remains responsive with large-outline PDFs.
 
 ## Priority 2 — annotation/document UX after current build is stable
 - [ ] Tap existing highlight -> change color / delete, only if touch hit-testing remains lightweight and does not interfere with scroll/zoom.
 - [ ] Tap note marker -> open/edit/delete directly, only if gesture conflicts are clean on physical iPad 1.
-- [ ] Keep Outline / Bookmark / Notes / Highlights under a unified bounded `Gezinti Merkezi` experience.
 - [ ] Add selected-text Copy only if it can reuse page-local selection state without a whole-document text index.
+- [ ] Consider optional bookmark titles only if the existing bookmark store can remain compact and backward-compatible.
 
 ## Priority 3 — candidate PDF-only improvements requiring profiling
 - [ ] Manual margin crop / visible-area crop. Do not implement automatic whole-document crop analysis.
@@ -72,7 +76,8 @@ Needs physical validation after latest build:
 - [ ] PDF search results remain max 40.
 - [ ] Search/cancel repeatedly; no progressive growth.
 - [ ] Reflow remains page-local.
-- [ ] Gezinti Merkezi remains bounded to 80 annotation-summary items, max 40 per kind.
+- [ ] Gezinti Merkezi annotation summary remains bounded to 80 items, max 40 per kind.
+- [ ] Outline parsing remains bounded to 80 entries.
 - [ ] Open/close several large PDFs sequentially.
 - [ ] Zoom/page-change for 10 minutes.
 - [ ] Rotate while zoomed repeatedly.
@@ -86,6 +91,7 @@ Needs physical validation after latest build:
 - [x] Do not implement general copy/move/rename/delete browser features in PDFReader.
 - [x] Do not duplicate favorites/file organization/Open With registry.
 - [x] Normal suite file-type routing belongs in iPad1Files.
+- [ ] iPad1Files should implement the lightweight picker receiver for `ipad1files://pick?callback=ipad1pdf` and return the same physical path without copying.
 
 ### Leave to iPad1FTPDownloader / iPad1Downloader
 - [x] Do not expand HTTP/HTTPS/FTP/WebDAV browse/download/upload/queue/resume in PDFReader.
