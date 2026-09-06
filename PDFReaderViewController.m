@@ -12,6 +12,7 @@
 
 static NSString * const LastHighlightColorKey=@"LastHighlightColor";
 static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
+static const NSUInteger IPAD1_DIRECT_ANNOTATION_HIT_LIMIT=80;
 
 @implementation PDFReaderViewController
 
@@ -246,6 +247,75 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     [target release];
 }
 
+- (NSString *)displayNameForTextMarkType:(NSString *)type {
+    if([type isEqualToString:@"underline"])return @"Altı Çizili";
+    if([type isEqualToString:@"strikeout"])return @"Üstü Çizili";
+    return @"Highlight";
+}
+
+- (BOOL)annotation:(NSDictionary *)a containsOverlayPoint:(CGPoint)p {
+    NSString *type=[a objectForKey:@"type"];
+    CGFloat w=_overlay.bounds.size.width,h=_overlay.bounds.size.height;
+    if(w<=0||h<=0)return NO;
+    NSArray *rects=[a objectForKey:@"rects"];
+    if(([type isEqualToString:@"highlight"]||[type isEqualToString:@"underline"]||[type isEqualToString:@"strikeout"])&&[rects count]>0){
+        NSUInteger count=MIN((NSUInteger)32,[rects count]);
+        for(NSUInteger i=0;i<count;i++){
+            CGRect n=CGRectFromString([rects objectAtIndex:i]);
+            CGRect q=CGRectMake(n.origin.x*w,n.origin.y*h,n.size.width*w,n.size.height*h);
+            if(CGRectContainsPoint(CGRectInset(q,-8.0f,-8.0f),p))return YES;
+        }
+        return NO;
+    }
+    NSString *rect=[a objectForKey:@"rect"];
+    if([rect length]>0&&([type isEqualToString:@"highlight"]||[type isEqualToString:@"note"])){
+        CGRect n=CGRectFromString(rect);
+        CGRect q=CGRectMake(n.origin.x*w,n.origin.y*h,n.size.width*w,n.size.height*h);
+        return CGRectContainsPoint(CGRectInset(q,-10.0f,-10.0f),p);
+    }
+    return NO;
+}
+
+- (void)presentNoteAtIndex:(NSUInteger)index {
+    NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
+    if(index>=[anns count])return;
+    NSDictionary *d=[anns objectAtIndex:index];
+    if(![[d objectForKey:@"type"] isEqualToString:@"note"])return;
+    _editingAnnotationIndex=index;
+    NSString *text=[d objectForKey:@"text"]?:@"";
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Not" message:text delegate:self cancelButtonTitle:@"Kapat" otherButtonTitles:@"Düzenle",@"Sil",nil] autorelease];
+    a.tag=40;
+    [a show];
+}
+
+- (void)presentTextMarkAtIndex:(NSUInteger)index {
+    NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
+    if(index>=[anns count])return;
+    NSDictionary *d=[anns objectAtIndex:index];
+    NSString *type=[d objectForKey:@"type"];
+    if(![type isEqualToString:@"highlight"]&&![type isEqualToString:@"underline"]&&![type isEqualToString:@"strikeout"])return;
+    _editingHighlightIndex=index;
+    UIActionSheet *e=[[[UIActionSheet alloc] initWithTitle:[self displayNameForTextMarkType:type] delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:@"Sil" otherButtonTitles:@"Sarı",@"Yeşil",@"Pembe",@"Turuncu",@"Açık Mavi",nil] autorelease];
+    e.tag=106;
+    [e showFromToolbar:_toolbar];
+}
+
+- (BOOL)openAnnotationAtOverlayPoint:(CGPoint)p {
+    NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
+    NSUInteger count=MIN((NSUInteger)IPAD1_DIRECT_ANNOTATION_HIT_LIMIT,[anns count]);
+    while(count>0){
+        NSUInteger index=count-1;
+        NSDictionary *a=[anns objectAtIndex:index];
+        if([self annotation:a containsOverlayPoint:p]){
+            NSString *type=[a objectForKey:@"type"];
+            if([type isEqualToString:@"note"]){[self presentNoteAtIndex:index];return YES;}
+            if([type isEqualToString:@"highlight"]||[type isEqualToString:@"underline"]||[type isEqualToString:@"strikeout"]){[self presentTextMarkAtIndex:index];return YES;}
+        }
+        count--;
+    }
+    return NO;
+}
+
 - (void)handleDoubleTap:(UITapGestureRecognizer *)g {
     if(_pageLocked||g.state!=UIGestureRecognizerStateRecognized)return;
     if(_scrollView.zoomScale>1.05f){[_scrollView setZoomScale:1.0f animated:YES];return;}
@@ -258,7 +328,10 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 
 - (void)handleEdgeTap:(UITapGestureRecognizer *)g {
     if(_pageLocked||g.state!=UIGestureRecognizerStateRecognized)return;
-    if(_overlay.userInteractionEnabled||_scrollView.zoomScale>1.05f)return;
+    if(_overlay.userInteractionEnabled)return;
+    CGPoint annotationPoint=[g locationInView:_overlay];
+    if(CGRectContainsPoint(_overlay.bounds,annotationPoint)&&[self openAnnotationAtOverlayPoint:annotationPoint])return;
+    if(_scrollView.zoomScale>1.05f)return;
     CGPoint p=[g locationInView:_scrollView];
     CGFloat w=_scrollView.bounds.size.width;
     if(w<=0)return;
@@ -337,17 +410,18 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 - (void)showCurrentPageHighlights {
     NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
     NSMutableArray *indexes=[NSMutableArray array];
-    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Highlight Düzenle" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"İşaret Düzenle" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
     s.tag=105;
     for(NSUInteger i=0;i<[anns count];i++){
         NSDictionary *a=[anns objectAtIndex:i];
-        if(![[a objectForKey:@"type"] isEqualToString:@"highlight"])continue;
+        NSString *type=[a objectForKey:@"type"];
+        if(![type isEqualToString:@"highlight"]&&![type isEqualToString:@"underline"]&&![type isEqualToString:@"strikeout"])continue;
         [indexes addObject:[NSNumber numberWithUnsignedInteger:i]];
         NSString *color=[a objectForKey:@"color"]?:@"yellow";
-        [s addButtonWithTitle:[NSString stringWithFormat:@"Highlight %lu — %@",(unsigned long)[indexes count],color]];
+        [s addButtonWithTitle:[NSString stringWithFormat:@"%@ %lu — %@",[self displayNameForTextMarkType:type],(unsigned long)[indexes count],color]];
         if([indexes count]>=20)break;
     }
-    if([indexes count]==0){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Highlight Düzenle" message:@"Bu sayfada highlight yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];return;}
+    if([indexes count]==0){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"İşaret Düzenle" message:@"Bu sayfada metin işareti yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show];return;}
     [_highlightSheetIndexes release]; _highlightSheetIndexes=[indexes copy];
     [s addButtonWithTitle:@"İptal"];s.cancelButtonIndex=[s numberOfButtons]-1;[s showFromToolbar:_toolbar];
 }
@@ -364,6 +438,12 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     [s showFromToolbar:_toolbar];
 }
 
+- (void)showTextMarkChoices {
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Metin İşaretle" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:@"Highlight",@"Altını Çiz",@"Üstünü Çiz",nil] autorelease];
+    s.tag=108;
+    [s showFromToolbar:_toolbar];
+}
+
 - (void)showReadingOptions {
     UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Okuma Görünümü" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:@"Gündüz",@"Sepya",@"Gece",@"Sayfaya Sığdır",@"Genişliğe Sığdır",_pageLocked?@"Sayfa Kilidini Aç":@"Sayfayı Kilitle",nil] autorelease];
     s.tag=107;
@@ -375,6 +455,7 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     CGPDFPageRef page=CGPDFDocumentGetPage(_document,_currentPage);
     NSArray *rects=[PDFTextExtractor normalizedTextRectsForPage:page maxRects:160];
     _overlay.drawingEnabled=NO;
+    _overlay.selectionAnnotationType=@"highlight";
     _overlay.highlightColorName=color?color:@"yellow";
     _overlay.pageTextRects=rects;
     [[NSUserDefaults standardUserDefaults] setObject:_overlay.highlightColorName forKey:LastHighlightColorKey];
@@ -386,12 +467,32 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     [a show];
 }
 
+- (void)beginTextMarkWithType:(NSString *)type {
+    if(!_document||_currentPage<1||_currentPage>_pageCount||_pageLocked)return;
+    CGPDFPageRef page=CGPDFDocumentGetPage(_document,_currentPage);
+    NSArray *rects=[PDFTextExtractor normalizedTextRectsForPage:page maxRects:160];
+    if([rects count]==0){
+        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:[self displayNameForTextMarkType:type] message:@"Bu işlem için seçilebilir metin katmanı gerekli. OCR çalıştırılmaz." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+        [a show];
+        return;
+    }
+    _overlay.drawingEnabled=NO;
+    _overlay.selectionAnnotationType=type;
+    NSString *saved=[[NSUserDefaults standardUserDefaults] stringForKey:LastHighlightColorKey];
+    _overlay.highlightColorName=[saved length]>0?saved:@"yellow";
+    _overlay.pageTextRects=rects;
+    _overlay.highlightSelectionEnabled=YES;
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:[self displayNameForTextMarkType:type] message:@"İşaretlemek istediğiniz metnin üzerinde parmağınızı sürükleyin. Yalnız aktif sayfa geometrisi kullanılır." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+    [a show];
+}
+
 - (void)replaceEditingHighlightColor:(NSString *)color {
     if(_editingHighlightIndex==NSNotFound)return;
     NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
     if(_editingHighlightIndex>=[anns count]){_editingHighlightIndex=NSNotFound;return;}
     NSDictionary *old=[anns objectAtIndex:_editingHighlightIndex];
-    if(![[old objectForKey:@"type"] isEqualToString:@"highlight"]){_editingHighlightIndex=NSNotFound;return;}
+    NSString *type=[old objectForKey:@"type"];
+    if(![type isEqualToString:@"highlight"]&&![type isEqualToString:@"underline"]&&![type isEqualToString:@"strikeout"]){_editingHighlightIndex=NSNotFound;return;}
     NSMutableDictionary *updated=[NSMutableDictionary dictionaryWithDictionary:old];
     [updated setObject:color?color:@"yellow" forKey:@"color"];
     [AnnotationStore replaceAnnotationAtIndex:_editingHighlightIndex withAnnotation:updated path:_pdfPath page:_currentPage];
@@ -403,7 +504,7 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 
 - (void)showTools {
     UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Araçlar" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:
-                      @"Ara",@"Gezinti Merkezi",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight Seç",@"Highlight Düzenle",@"Okuma Görünümü",@"Konum Geri",@"Konum İleri",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
+                      @"Ara",@"Gezinti Merkezi",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Metin İşaretle",@"İşaret Düzenle",@"Okuma Görünümü",@"Konum Geri",@"Konum İleri",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
     s.tag=100; [s showFromToolbar:_toolbar];
 }
 
@@ -414,13 +515,8 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     }
     if(s.tag==102){
         if(b>=0&&(NSUInteger)b<[_noteSheetIndexes count]){
-            _editingAnnotationIndex=[[_noteSheetIndexes objectAtIndex:(NSUInteger)b] unsignedIntegerValue];
-            NSArray *anns=[AnnotationStore annotationsForPath:_pdfPath page:_currentPage];
-            if(_editingAnnotationIndex<[anns count]){
-                NSDictionary *d=[anns objectAtIndex:_editingAnnotationIndex];
-                NSString *text=[d objectForKey:@"text"]?:@"";
-                UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Not" message:text delegate:self cancelButtonTitle:@"Kapat" otherButtonTitles:@"Düzenle",@"Sil",nil] autorelease];a.tag=40;[a show];
-            }
+            NSUInteger index=[[_noteSheetIndexes objectAtIndex:(NSUInteger)b] unsignedIntegerValue];
+            [self presentNoteAtIndex:index];
         }
         return;
     }
@@ -434,9 +530,8 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     }
     if(s.tag==105){
         if(b>=0&&(NSUInteger)b<[_highlightSheetIndexes count]){
-            _editingHighlightIndex=[[_highlightSheetIndexes objectAtIndex:(NSUInteger)b] unsignedIntegerValue];
-            UIActionSheet *e=[[[UIActionSheet alloc] initWithTitle:@"Highlight" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:@"Sil" otherButtonTitles:@"Sarı",@"Yeşil",@"Pembe",@"Turuncu",@"Açık Mavi",nil] autorelease];
-            e.tag=106;[e showFromToolbar:_toolbar];
+            NSUInteger index=[[_highlightSheetIndexes objectAtIndex:(NSUInteger)b] unsignedIntegerValue];
+            [self presentTextMarkAtIndex:index];
         }
         return;
     }
@@ -458,6 +553,12 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
         else if(b==5)[self setPageLocked:!_pageLocked];
         return;
     }
+    if(s.tag==108){
+        if(b==0)[self showHighlightColors];
+        else if(b==1)[self beginTextMarkWithType:@"underline"];
+        else if(b==2)[self beginTextMarkWithType:@"strikeout"];
+        return;
+    }
     if(s.tag!=100)return;
 
     if(b==0){SearchViewController *v=[[[SearchViewController alloc] initWithPDFPath:_pdfPath] autorelease];v.delegate=self;[self.navigationController pushViewController:v animated:YES];}
@@ -467,7 +568,7 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     else if(b==4){UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Sayfaya Git" message:[NSString stringWithFormat:@"1 - %lu",(unsigned long)_pageCount] delegate:self cancelButtonTitle:@"İptal" otherButtonTitles:@"Git",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setKeyboardType:UIKeyboardTypeNumberPad];a.tag=31;[a show];}
     else if(b==5)[self showBookmarks];
     else if(b==6){if(!_pageLocked){[_overlay clearTemporarySelection];_overlay.drawingEnabled=!_overlay.drawingEnabled;}}
-    else if(b==7)[self showHighlightColors];
+    else if(b==7)[self showTextMarkChoices];
     else if(b==8)[self showCurrentPageHighlights];
     else if(b==9)[self showReadingOptions];
     else if(b==10)[self goBackReadingLocation];
