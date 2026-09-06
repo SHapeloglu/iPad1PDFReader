@@ -1,5 +1,8 @@
 #import "PDFOutlineParser.h"
+
 @implementation PDFOutlineParser
+
+static const NSUInteger IPAD1_OUTLINE_MAX_ITEMS=80;
 
 static NSNumber *PageNumberForDestinationArray(CGPDFArrayRef dest, CGPDFDocumentRef doc) {
     if(!dest||!doc||CGPDFArrayGetCount(dest)<1)return nil;
@@ -30,7 +33,8 @@ static NSNumber *PageNumberForNode(CGPDFDictionaryRef node, CGPDFDocumentRef doc
 }
 
 static void ParseNode(CGPDFDictionaryRef node,NSMutableArray*out,int depth,CGPDFDocumentRef doc){
-    if(!node||depth>8)return;
+    if(!node||depth>8||[out count]>=IPAD1_OUTLINE_MAX_ITEMS)return;
+
     CGPDFStringRef title=NULL;
     CGPDFDictionaryGetString(node,"Title",&title);
     NSString*t=title?(NSString*)CGPDFStringCopyTextString(title):[@"Başlıksız" retain];
@@ -39,15 +43,21 @@ static void ParseNode(CGPDFDictionaryRef node,NSMutableArray*out,int depth,CGPDF
     if(page)[item setObject:page forKey:@"page"];
     [out addObject:item];
     [t release];
+
+    if([out count]>=IPAD1_OUTLINE_MAX_ITEMS)return;
+
     CGPDFDictionaryRef first=NULL,next=NULL;
     if(CGPDFDictionaryGetDictionary(node,"First",&first))ParseNode(first,out,depth+1,doc);
+    if([out count]>=IPAD1_OUTLINE_MAX_ITEMS)return;
     if(CGPDFDictionaryGetDictionary(node,"Next",&next))ParseNode(next,out,depth,doc);
 }
 
 + (NSArray*)outlineForDocument:(CGPDFDocumentRef)doc{
-    NSMutableArray*out=[NSMutableArray array];
+    NSMutableArray*out=[NSMutableArray arrayWithCapacity:MIN((NSUInteger)24,IPAD1_OUTLINE_MAX_ITEMS)];
+    if(!doc)return out;
     CGPDFDictionaryRef cat=CGPDFDocumentGetCatalog(doc),ol=NULL,first=NULL;
     if(cat&&CGPDFDictionaryGetDictionary(cat,"Outlines",&ol)&&CGPDFDictionaryGetDictionary(ol,"First",&first))ParseNode(first,out,0,doc);
     return out;
 }
+
 @end
