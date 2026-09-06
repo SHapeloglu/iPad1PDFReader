@@ -44,7 +44,7 @@
     }
 
     NSMutableArray *noteRows=[NSMutableArray array];
-    NSMutableArray *highlightRows=[NSMutableArray array];
+    NSMutableArray *markRows=[NSMutableArray array];
     NSUInteger total=0;
     for(NSUInteger page=1;page<=_pageCount && total<IPAD1_NAVIGATOR_MAX_ITEMS;page++) {
         NSAutoreleasePool *pool=[[NSAutoreleasePool alloc] init];
@@ -57,12 +57,13 @@
                 if([text length]>60) text=[NSString stringWithFormat:@"%@…",[text substringToIndex:60]];
                 [noteRows addObject:[NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:page],@"page",text,@"detail",@"Not",@"kind",nil]];
                 total++;
-            } else if([type isEqualToString:@"highlight"] && [highlightRows count]<IPAD1_NAVIGATOR_MAX_PER_KIND) {
+            } else if(([type isEqualToString:@"highlight"]||[type isEqualToString:@"underline"]||[type isEqualToString:@"strikeout"]) && [markRows count]<IPAD1_NAVIGATOR_MAX_PER_KIND) {
+                NSString *kind=[type isEqualToString:@"underline"]?@"Altı Çizili":([type isEqualToString:@"strikeout"]?@"Üstü Çizili":@"Highlight");
                 NSString *color=[a objectForKey:@"color"];
                 NSString *detail=([color length]>0)?[NSString stringWithFormat:@"Renk: %@",color]:nil;
-                NSMutableDictionary *row=[NSMutableDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:page],@"page",@"Highlight",@"kind",nil];
+                NSMutableDictionary *row=[NSMutableDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:page],@"page",kind,@"kind",nil];
                 if(detail)[row setObject:detail forKey:@"detail"];
-                [highlightRows addObject:row];
+                [markRows addObject:row];
                 total++;
             }
             if(total>=IPAD1_NAVIGATOR_MAX_ITEMS) break;
@@ -71,7 +72,7 @@
     }
 
     [_sections release];
-    _sections=[[NSArray alloc] initWithObjects:outlineRows,bookmarkRows,noteRows,highlightRows,nil];
+    _sections=[[NSArray alloc] initWithObjects:outlineRows,bookmarkRows,noteRows,markRows,nil];
     [self.tableView reloadData];
 }
 
@@ -86,7 +87,7 @@
     if(section==0)return @"İçindekiler";
     if(section==1)return @"Yer İmleri";
     if(section==2)return @"Notlar";
-    return @"Highlight'lar";
+    return @"İşaretler";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
