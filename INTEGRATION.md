@@ -1,13 +1,9 @@
 # INTEGRATION.md
 
 ## Purpose
-This file is the authoritative integration contract between:
+This file is the authoritative integration contract between the iPad 1 specialist applications.
 
-- `SHapeloglu/iPad1Files`
-- `SHapeloglu/iPad1FTPDownloader`
-- `SHapeloglu/iPad1PDFReader`
-
-The goal is to make the three applications complement each other without duplicating engines, storage or memory-heavy features.
+The goal is to make the applications complement each other without duplicating engines, storage or memory-heavy features.
 
 ## Platform contract
 All integrations must preserve:
@@ -23,40 +19,19 @@ All integrations must preserve:
 ## Responsibility split
 
 ### iPad1Files
-Owns:
-- canonical shared storage;
-- local file/folder browse;
-- copy/move/rename/delete;
-- multi-select;
-- favorites;
-- file information;
-- local search;
-- Open With / cross-app launch.
-
-Must not become a PDF engine or FTP engine.
+Owns canonical shared storage, local file/folder browsing, copy/move/rename/delete, pickers, favorites, local search, ZIP/archive and cross-app launch. It must not become a network-transfer, PDF-rendering or media-playback engine.
 
 ### iPad1FTPDownloader
-Owns:
-- FTP connection and remote browsing;
-- download/upload;
-- progress/speed;
-- queue/resume where supported;
-- saved servers;
-- remote file operations.
+Owns FTP connection, remote browsing, FTP download/upload, FTP transfer state, saved servers and remote FTP operations. It must not implement generic HTTP/HTTPS downloads.
 
-Must not become a general file manager or PDF reader.
+### iPad1HTTPDownloader
+Owns HTTP/HTTPS URL downloads, redirects, response/header handling, streamed writes, `.part` lifecycle, progress/speed/ETA, Range-based resume where supported, cancel/retry, bounded queue and HTTP-specific failure recovery. It must not become a file manager, PDF reader or media player.
 
 ### iPad1PDFReader
-Owns:
-- PDF rendering;
-- zoom and navigation;
-- search/reflow;
-- bookmarks;
-- outline;
-- annotations/highlights/notes/signature;
-- PDF page operations/export.
+Owns PDF rendering, zoom/navigation, search/reflow, bookmarks, outline, annotations/highlights/notes/signature and PDF page operations/export. It must not duplicate HTTP/FTP transfer engines.
 
-Must not grow into a general file manager or duplicate the FTP transfer engine.
+### iPad1Player
+Owns local media decode/playback, seeking, codecs and subtitle discovery/rendering. It receives only completed accessible local media paths from downloader applications.
 
 ## Canonical shared filesystem
 Owned by iPad1Files:
@@ -65,39 +40,27 @@ Owned by iPad1Files:
 /var/mobile/Media/iPad1Files
 ```
 
-Common directories:
+Common directories include `Downloads/`, `Documents/`, `PDFs/`, `Images/`, `Music/`, `Videos/`, `Archives/`, `Shared/`, `Temp/` and `AppData/`.
 
-```text
-Downloads/
-Documents/
-PDFs/
-Images/
-Music/
-Videos/
-Archives/
-Shared/
-Temp/
-AppData/
-```
-
-## FTP download contract
-Default destination for iPad1FTPDownloader should be:
+## Downloader storage contract
+Both FTP and HTTP downloaders should write completed files directly under the canonical shared storage, normally:
 
 ```text
 /var/mobile/Media/iPad1Files/Downloads/
 ```
 
-A downloaded file must not be duplicated into a second FTP-private download folder merely for integration.
+One logical transfer should produce one physical file. Do not copy a completed file into a downloader-private or reader-private directory merely for integration.
 
-Example:
+## Completed-file routing
+After successful transfer and only after the local file is accessible:
 
 ```text
-FTP server
-  -> iPad1FTPDownloader
-  -> /var/mobile/Media/iPad1Files/Downloads/book.pdf
-  -> iPad1Files sees the same physical file
-  -> iPad1PDFReader opens the same physical file
+.mkv/.mp4/.mov/.m4v/.avi -> ipad1player://open?path=<percent-encoded-absolute-path>
+.pdf                     -> ipad1pdf://open?path=<percent-encoded-absolute-path>
+other                    -> ipad1files://show?path=<percent-encoded-absolute-path>
 ```
+
+The sender passes the same physical file path. No integration copy is permitted.
 
 ## PDFReader discovery contract
 PDFReader should directly discover at least:
@@ -123,54 +86,16 @@ Rules:
 - shared files should not be copied solely because of the handoff;
 - ordinary external `Open In` files may still be copied to an app-owned persistent location when necessary.
 
-## Open With direction
-Initial extension mapping in iPad1Files:
-
-```text
-.pdf -> iPad1PDFReader
-```
-
-Future mappings belong in iPad1Files registry rather than hard-coding every app relationship into PDFReader.
-
 ## Networking policy
-Existing lightweight HTTP/FTP/WebDAV code inside PDFReader is maintenance-only.
-
-New transfer features should normally go to iPad1FTPDownloader or a future dedicated network component instead of PDFReader.
+Existing lightweight HTTP/FTP/WebDAV code inside PDFReader is maintenance-only. New HTTP/HTTPS download features belong to iPad1HTTPDownloader; FTP transfer features belong to iPad1FTPDownloader.
 
 Do not add `libsmb2`, `libssh2`, cloud SDKs or other heavy stacks to PDFReader merely to match competitors.
 
-## OCR / AI policy
-No device-side OCR or AI/ML in these apps for this hardware target.
-
-If OCR is needed:
-
-```text
-PC/VPS -> OCR -> searchable PDF -> shared storage -> iPad1PDFReader
-```
-
-## Single-file principle
-Whenever possible:
-
-```text
-one logical file = one physical file
-```
-
-Avoid workflows such as:
-
-```text
-iPad1FTPDownloads/book.pdf
-+ iPad1Files/Downloads/book.pdf
-+ PDFReader/Documents/book.pdf
-```
-
-when all three apps can safely reference the shared file instead.
+## iPad 1 memory policy
+- no device-side OCR or AI/ML;
+- no whole-file download buffers;
+- no duplicate integration copies;
+- keep cross-app contracts path-based and lightweight.
 
 ## Change-control rule
-Any change to:
-- canonical root;
-- common folder names;
-- URL schemes;
-- application responsibility boundaries;
-- AppData namespaces;
-
-must update `INTEGRATION.md`, `SESSION.md`, `ARCHITECTURE.md` and `README.md` in the same development phase.
+Any change to canonical root, common folder names, URL schemes, application responsibility boundaries or AppData namespaces must update the relevant integration/handoff documentation in the same development phase. Physical iPad testing remains authoritative.
