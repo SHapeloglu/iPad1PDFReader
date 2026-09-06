@@ -17,13 +17,11 @@ TARGET = iphone:clang:6.1:5.1
 
 ## Feature classification
 Before implementation every feature is classified:
-
 - **Green**: low-memory, incremental, safe by design.
 - **Yellow**: useful but requires hard bounds, page-local processing and physical-device profiling.
 - **Red**: reject for on-device implementation.
 
 Before memory classification, every feature also passes an **ownership gate**:
-
 1. Is the underlying operation specific to PDF or lightweight read-only text reading?
 2. Does another iPad1 companion app already own the operation?
 3. Can PDFReader launch that specialist through URL handoff/callback instead of duplicating its subsystem?
@@ -41,7 +39,6 @@ Red examples:
 
 ## Rendering
 `PDFPageView` uses Core Graphics / `CGPDFDocument`.
-
 Rules:
 - render one active full page at a time;
 - never pre-render an entire document;
@@ -50,13 +47,10 @@ Rules:
 
 ## Text Reader
 `TextReaderViewController` is deliberately separate from `PDFReaderViewController`.
-
 Supported plain-text extensions:
-
 ```text
 .txt .md .log .csv .json .xml .sql .py .sh .ini .conf
 ```
-
 Version 1 rules:
 - `UITextView` only;
 - read-only;
@@ -74,32 +68,22 @@ Version 1 rules:
 Memory rule:
 - inspect file size before reading;
 - hard full-load limit: **2 MiB**;
-- files above the limit are not loaded into `UITextView`; user receives a warning;
-- wrap-off width is bounded to avoid an unbounded view surface;
+- files above the limit are not loaded into `UITextView`;
+- wrap-off width is bounded;
 - do not add background indexing or parsers.
-
-Text Reader does not alter PDF rendering, annotation, search, bookmark or page-management code.
 
 ## Thumbnails
 `ThumbnailViewController` is lazy and bounded.
-
-Hard cache limit:
-
-```text
-8 thumbnails
-```
+Hard cache limit: **8 thumbnails**.
 
 ## Search
 `PDFTextExtractor` / `SearchViewController` use serial page-by-page extraction.
-
 Rules:
 - one page per incremental step;
 - visible progress;
 - user cancellation;
 - no resident document-wide text index;
 - max retained results: **40**.
-
-Text Reader search is independent and operates only on its already loaded <=2 MiB string.
 
 ## Reflow
 Reflow is page-scoped. Never concatenate the entire document into one large string.
@@ -112,37 +96,39 @@ Supported/lightweight families:
 - note;
 - simple signature;
 - region highlight;
-- page-local semantic text highlight.
+- page-local semantic text highlight;
+- page-local underline;
+- page-local strikeout.
 
-### Real text highlight
-Real text highlight is **Yellow**.
-
-Allowed design:
-- extract/select only active-page text geometry;
-- discard temporary selection geometry on page change/memory warning;
-- persist only page + compact rect list + fluorescent color;
-- no whole-document pre-indexing;
+### Page-local text marks
+Highlight, underline and strikeout reuse only the active page's bounded text geometry.
+Rules:
+- extract/select only active-page geometry;
+- max temporary text geometry remains bounded by the extractor call;
+- persist compact page + rect list + color only;
+- discard temporary geometry on page change/memory warning;
+- no document-wide text index;
 - no OCR fallback on-device.
 
-Fluorescent palette target:
+Highlight may fall back to a rectangular region on image/scanned pages. Underline and strikeout require selectable text and fail safely when none exists.
+
+Direct annotation interaction is also page-local and bounded. `PDFReaderViewController` examines at most **80 current-page annotations** for tap hit-testing. Existing note/highlight/underline/strikeout data is reused; no spatial index or background cache is created.
+
+Fluorescent/text-mark palette:
 - yellow;
 - green;
 - pink;
 - orange;
 - cyan/light blue.
 
-Region highlight remains a fallback for image-only/scanned PDFs.
-
-`PDFAnnotationExporter` should continue producing a new flattened PDF rather than implementing a heavy editable `/Annots` engine unless future profiling proves otherwise.
+`PDFAnnotationExporter` produces a new flattened PDF and now draws highlight, underline and strikeout marks without adding a heavy editable `/Annots` engine.
 
 ## Document navigation
-`DocumentNavigatorViewController` provides bounded navigation across annotations/bookmarks.
-
+`DocumentNavigatorViewController` provides bounded navigation across outline/bookmarks/notes/text marks.
 Hard limits:
+- outline parse max **80** entries;
 - max annotation-summary items: **80**;
-- max **40 per kind**.
-
-Outline resolution should remain lightweight and fail gracefully for unsupported named destinations.
+- max **40 per kind/section**.
 
 ## Page operations
 `PageManager` / `PageManagerViewController`:
@@ -155,7 +141,6 @@ Outline resolution should remain lightweight and fail gracefully for unsupported
 
 ## Ecosystem boundary
 The application family is intentionally modular:
-
 ```text
 iPad1Files          -> filesystem backbone + normal suite routing
 iPad1FTPDownloader  -> HTTP/FTP/WebDAV/network transfer specialist
@@ -181,21 +166,17 @@ iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 - download/upload;
 - queue/resume/progress/speed;
 - saved servers;
-- remote file commands;
-- future SMB/SFTP transfer support only if a concrete need and real iPad profiling justify it.
+- remote file commands.
 
 ### iPad1Player owns
 - video/audio decode and playback;
 - local media playback UI;
-- subtitle discovery/rendering and media-session controls;
-- media-format-specific behavior.
-
-PDFReader must never decode or play video/audio itself. A PDF link that resolves to an already-local media file may be handed off to iPad1Player. If the media resource first requires a network download, PDFReader must hand that work to iPad1FTPDownloader rather than downloading it itself.
+- subtitle discovery/rendering and media-session controls.
 
 ### iPad1Terminal owns
 - shell/PTY behavior;
 - command execution;
-- system utilities and terminal-oriented system workflows.
+- system utilities.
 
 ### iPad1VNC owns
 - remote desktop sessions;
@@ -206,66 +187,38 @@ PDFReader must never decode or play video/audio itself. A PDF link that resolves
 - PDF rendering/read UX;
 - search/reflow;
 - bookmark/outline;
-- annotations;
+- annotations including highlight/underline/strikeout;
 - page management/export;
 - PDF reading locations and recent-document history;
 - lightweight read-only rendering of supported plain-text files handed off by iPad1Files;
 - receiving document paths and launching companion specialists through narrowly scoped handoff.
 
-PDFReader is **not** the suite's normal file router. iPad1Files owns ordinary extension routing. If PDFReader receives an unsupported or misrouted local path directly, it may safely reject it or hand it to the known specialist as a fallback, but it must not grow a general routing registry.
-
-Text Reader must not grow into a general editor or file manager without a separate architectural decision.
-
-General file favorites do not belong in PDFReader; only PDF-specific bookmarks/reading locations and recent-document history do.
+PDFReader is **not** the suite's normal file router. iPad1Files owns ordinary extension routing.
 
 ## Shared storage
 Canonical root:
-
 ```text
 /var/mobile/Media/iPad1Files
 ```
-
 PDFReader directly scans:
-
 ```text
 /var/mobile/Media/iPad1Files/PDFs
 /var/mobile/Media/iPad1Files/Downloads
 ```
+This direct scan is a bounded PDF-library convenience only.
 
-This direct scan is a bounded PDF-library convenience only. It must not evolve into a filesystem browser.
-
-Text files are primarily opened by iPad1Files handoff and should be opened in-place.
-
-Cross-app contract:
-
+Cross-app contracts:
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
-```
-
-Recommended picker contract:
-
-```text
 ipad1files://pick?callback=ipad1pdf
-```
-
-Recommended local-media handoff contract when PDFReader legitimately encounters an already-local media target:
-
-```text
 ipad1player://open?path=<percent-encoded-absolute-path>
 ```
 
-The receiver checks the extension and routes PDF to PDF Reader or supported text to Text Reader. Shared files open in-place where safe; avoid duplicate physical copies.
-
 ## Networking
-Existing HTTP/FTP/WebDAV code in PDFReader is **compatibility-only and scheduled for retirement after companion handoff is physically proven**.
-
-Do not expand it for feature parity. Prefer iPad1FTPDownloader/iPad1Files handoff.
-
-SMB/SFTP libraries are not bundled in PDFReader.
+Existing HTTP/FTP/WebDAV code in PDFReader is compatibility-only and scheduled for retirement after companion handoff is physically proven.
 
 ## Memory management
 Project is MRC.
-
 Rules:
 - explicit ownership;
 - release temporary objects aggressively;
@@ -282,7 +235,7 @@ Rules:
 ## Main components
 - `AppDelegate` — bootstrap + URL/Open In handoff.
 - `PDFLibraryViewController` — local/shared PDF discovery and document-type routing.
-- `PDFReaderViewController` — PDF reader orchestration.
+- `PDFReaderViewController` — PDF reader orchestration + bounded direct annotation hit-testing.
 - `TextReaderViewController` — bounded read-only UTF-8 text viewing.
 - `PDFPageView` — active-page rendering.
 - `BookmarkStore` — bookmark/last-page state.
@@ -290,10 +243,10 @@ Rules:
 - `ThumbnailViewController` — bounded thumbnails.
 - `PDFTextExtractor` / `SearchViewController` — incremental PDF search.
 - `ReflowViewController` — page-local reflow.
-- `AnnotationStore` / `AnnotationOverlayView` — lightweight annotations.
+- `AnnotationStore` / `AnnotationOverlayView` — lightweight annotations/text marks.
 - `DocumentNavigatorViewController` — bounded document navigation.
 - `PDFAnnotationExporter` — flattened export.
 - `PageManager` / `PageManagerViewController` — safe page operations.
-- `PDFOutlineParser` / `OutlineViewController` — outline handling.
+- `PDFOutlineParser` / `OutlineViewController` — bounded outline handling.
 - legacy network classes — compatibility only until handoff retirement.
 - `MemoryBudget` — explicit iPad 1 limits.
