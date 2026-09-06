@@ -11,6 +11,14 @@ static void SetExportHighlightFill(CGContextRef c, NSString *name) {
     else CGContextSetRGBFillColor(c,1.0f,1.0f,.10f,.34f);
 }
 
+static void SetExportTextMarkStroke(CGContextRef c, NSString *name) {
+    if([name isEqualToString:@"green"]) CGContextSetRGBStrokeColor(c,.10f,.70f,.10f,.90f);
+    else if([name isEqualToString:@"pink"]) CGContextSetRGBStrokeColor(c,.95f,.15f,.55f,.90f);
+    else if([name isEqualToString:@"orange"]) CGContextSetRGBStrokeColor(c,.95f,.45f,.05f,.90f);
+    else if([name isEqualToString:@"cyan"]) CGContextSetRGBStrokeColor(c,.05f,.65f,.80f,.90f);
+    else CGContextSetRGBStrokeColor(c,.85f,.70f,.00f,.90f);
+}
+
 static CGRect PDFRectFromNormalizedOverlayRect(CGRect r, CGRect box) {
     CGFloat x=box.origin.x+r.origin.x*box.size.width;
     CGFloat y=box.origin.y+(1.0f-r.origin.y-r.size.height)*box.size.height;
@@ -37,13 +45,28 @@ static void DrawHighlightAnnotation(CGContextRef c, NSDictionary *a, CGRect box)
     }
 }
 
+static void DrawTextMarkAnnotation(CGContextRef c, NSDictionary *a, CGRect box, NSString *type) {
+    NSArray *rects=[a objectForKey:@"rects"];
+    if([rects count]==0)return;
+    SetExportTextMarkStroke(c,[a objectForKey:@"color"]);
+    CGContextSetLineWidth(c,1.25f);
+    NSUInteger count=MIN((NSUInteger)32,[rects count]);
+    for(NSUInteger i=0;i<count;i++){
+        CGRect q=PDFRectFromNormalizedOverlayRect(CGRectFromString([rects objectAtIndex:i]),box);
+        CGFloat y=[type isEqualToString:@"strikeout"]?CGRectGetMidY(q):CGRectGetMinY(q)+1.0f;
+        CGContextMoveToPoint(c,CGRectGetMinX(q),y);
+        CGContextAddLineToPoint(c,CGRectGetMaxX(q),y);
+        CGContextStrokePath(c);
+    }
+}
+
 @implementation PDFAnnotationExporter
 + (BOOL)exportFlattenedPDFAtPath:(NSString *)path toPath:(NSString *)outPath {
     CGPDFDocumentRef d=CGPDFDocumentCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path]); if(!d)return NO;
     CGContextRef c=CGPDFContextCreateWithURL((CFURLRef)[NSURL fileURLWithPath:outPath],NULL,NULL); if(!c){CGPDFDocumentRelease(d);return NO;}
     size_t count=CGPDFDocumentGetNumberOfPages(d);
     for(size_t i=1;i<=count;i++){ CGPDFPageRef p=CGPDFDocumentGetPage(d,i); CGRect box=CGPDFPageGetBoxRect(p,kCGPDFMediaBox); CGPDFContextBeginPage(c,NULL); CGContextDrawPDFPage(c,p);
-        for(NSDictionary *a in [AnnotationStore annotationsForPath:path page:i]){ NSString *type=[a objectForKey:@"type"]; if([type isEqualToString:@"highlight"]){DrawHighlightAnnotation(c,a,box);} else if([type isEqualToString:@"draw"]){NSArray *pts=[a objectForKey:@"points"];CGContextSetRGBStrokeColor(c,0,0,1,.9);CGContextSetLineWidth(c,2);for(NSUInteger k=0;k<[pts count];k++){CGPoint pt=CGPointFromString([pts objectAtIndex:k]);CGFloat x=pt.x*box.size.width,y=pt.y*box.size.height;if(k==0)CGContextMoveToPoint(c,x,y);else CGContextAddLineToPoint(c,x,y);}CGContextStrokePath(c);} }
+        for(NSDictionary *a in [AnnotationStore annotationsForPath:path page:i]){ NSString *type=[a objectForKey:@"type"]; if([type isEqualToString:@"highlight"]){DrawHighlightAnnotation(c,a,box);} else if([type isEqualToString:@"underline"]||[type isEqualToString:@"strikeout"]){DrawTextMarkAnnotation(c,a,box,type);} else if([type isEqualToString:@"draw"]){NSArray *pts=[a objectForKey:@"points"];CGContextSetRGBStrokeColor(c,0,0,1,.9);CGContextSetLineWidth(c,2);for(NSUInteger k=0;k<[pts count];k++){CGPoint pt=CGPointFromString([pts objectAtIndex:k]);CGFloat x=pt.x*box.size.width,y=pt.y*box.size.height;if(k==0)CGContextMoveToPoint(c,x,y);else CGContextAddLineToPoint(c,x,y);}CGContextStrokePath(c);} }
         CGPDFContextEndPage(c);
     }
     CGPDFContextClose(c); CGContextRelease(c); CGPDFDocumentRelease(d); return YES;
