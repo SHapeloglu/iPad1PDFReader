@@ -157,8 +157,9 @@ Outline resolution should remain lightweight and fail gracefully for unsupported
 The application family is intentionally modular:
 
 ```text
-iPad1Files          -> filesystem backbone
+iPad1Files          -> filesystem backbone + normal suite routing
 iPad1FTPDownloader  -> HTTP/FTP/WebDAV/network transfer specialist
+iPad1Player         -> video/audio/subtitle playback specialist
 iPad1Terminal       -> shell/system command specialist
 iPad1VNC            -> remote desktop specialist
 iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
@@ -169,6 +170,7 @@ iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 - shared folders;
 - file-level favorites;
 - Open With / file picker;
+- normal extension-based suite routing;
 - file classification/organization;
 - ZIP/archive management;
 - general filesystem search.
@@ -181,6 +183,14 @@ iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 - saved servers;
 - remote file commands;
 - future SMB/SFTP transfer support only if a concrete need and real iPad profiling justify it.
+
+### iPad1Player owns
+- video/audio decode and playback;
+- local media playback UI;
+- subtitle discovery/rendering and media-session controls;
+- media-format-specific behavior.
+
+PDFReader must never decode or play video/audio itself. A PDF link that resolves to an already-local media file may be handed off to iPad1Player. If the media resource first requires a network download, PDFReader must hand that work to iPad1FTPDownloader rather than downloading it itself.
 
 ### iPad1Terminal owns
 - shell/PTY behavior;
@@ -200,7 +210,9 @@ iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 - page management/export;
 - PDF reading locations and recent-document history;
 - lightweight read-only rendering of supported plain-text files handed off by iPad1Files;
-- receiving document paths and launching companion specialists through handoff.
+- receiving document paths and launching companion specialists through narrowly scoped handoff.
+
+PDFReader is **not** the suite's normal file router. iPad1Files owns ordinary extension routing. If PDFReader receives an unsupported or misrouted local path directly, it may safely reject it or hand it to the known specialist as a fallback, but it must not grow a general routing registry.
 
 Text Reader must not grow into a general editor or file manager without a separate architectural decision.
 
@@ -234,6 +246,12 @@ Recommended picker contract:
 
 ```text
 ipad1files://pick?callback=ipad1pdf
+```
+
+Recommended local-media handoff contract when PDFReader legitimately encounters an already-local media target:
+
+```text
+ipad1player://open?path=<percent-encoded-absolute-path>
 ```
 
 The receiver checks the extension and routes PDF to PDF Reader or supported text to Text Reader. Shared files open in-place where safe; avoid duplicate physical copies.
