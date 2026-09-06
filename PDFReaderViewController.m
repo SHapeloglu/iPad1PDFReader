@@ -175,6 +175,27 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
     [self restoreNormalizedViewportCenter:relative];
 }
 
+- (void)fitPage {
+    if(_pageLocked)return;
+    [_scrollView setZoomScale:1.0f animated:YES];
+    _sessionZoomScale=1.0f;
+    [self centerZoomedPage];
+    _scrollView.contentOffset=CGPointZero;
+}
+
+- (void)fitWidth {
+    if(_pageLocked||_pageView.bounds.size.width<=0||_scrollView.bounds.size.width<=0)return;
+    CGFloat available=MAX(1.0f,_scrollView.bounds.size.width-20.0f);
+    CGFloat target=available/_pageView.bounds.size.width;
+    target=MIN(_scrollView.maximumZoomScale,MAX(_scrollView.minimumZoomScale,target));
+    [_scrollView setZoomScale:target animated:YES];
+    _sessionZoomScale=target;
+    [self centerZoomedPage];
+    CGPoint offset=_scrollView.contentOffset;
+    offset.y=0.0f;
+    _scrollView.contentOffset=offset;
+}
+
 - (void)trimReadingHistory:(NSMutableArray *)history {
     while([history count]>IPAD1_READING_HISTORY_LIMIT)[history removeObjectAtIndex:0];
 }
@@ -194,7 +215,11 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 - (void)nextPage { if(!_pageLocked&&_currentPage<_pageCount)[self navigateToPage:_currentPage+1 recordHistory:YES]; }
 
 - (void)goBackReadingLocation {
-    if([_backHistory count]==0)return;
+    if([_backHistory count]==0){
+        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Konum Geri" message:@"Geri dönülecek okuma konumu yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+        [a show];
+        return;
+    }
     NSNumber *target=[[_backHistory lastObject] retain];
     [_backHistory removeLastObject];
     [_forwardHistory addObject:[NSNumber numberWithUnsignedInteger:_currentPage]];
@@ -206,7 +231,11 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 }
 
 - (void)goForwardReadingLocation {
-    if([_forwardHistory count]==0)return;
+    if([_forwardHistory count]==0){
+        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Konum İleri" message:@"İleri gidilecek okuma konumu yok." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+        [a show];
+        return;
+    }
     NSNumber *target=[[_forwardHistory lastObject] retain];
     [_forwardHistory removeLastObject];
     [_backHistory addObject:[NSNumber numberWithUnsignedInteger:_currentPage]];
@@ -336,7 +365,7 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 }
 
 - (void)showReadingOptions {
-    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Okuma Görünümü" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:@"Gündüz",@"Sepya",@"Gece",_pageLocked?@"Sayfa Kilidini Aç":@"Sayfayı Kilitle",nil] autorelease];
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Okuma Görünümü" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:@"Gündüz",@"Sepya",@"Gece",@"Sayfaya Sığdır",@"Genişliğe Sığdır",_pageLocked?@"Sayfa Kilidini Aç":@"Sayfayı Kilitle",nil] autorelease];
     s.tag=107;
     [s showFromToolbar:_toolbar];
 }
@@ -374,7 +403,7 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
 
 - (void)showTools {
     UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Araçlar" delegate:self cancelButtonTitle:@"İptal" destructiveButtonTitle:nil otherButtonTitles:
-                      @"Ara",@"Belge Gezgini",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight Seç",@"Highlight Düzenle",@"Okuma Görünümü",@"Geri",@"İleri",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
+                      @"Ara",@"Gezinti Merkezi",@"Reflow",@"İçindekiler",@"Sayfaya Git",@"Yer İmleri",@"Çizim Aç/Kapat",@"Highlight Seç",@"Highlight Düzenle",@"Okuma Görünümü",@"Konum Geri",@"Konum İleri",@"Not Ekle",@"Sayfa Notları",@"İmza",@"Sayfa Yöneticisi",@"Annotation'lı PDF Dışa Aktar",nil] autorelease];
     s.tag=100; [s showFromToolbar:_toolbar];
 }
 
@@ -424,7 +453,9 @@ static const NSUInteger IPAD1_READING_HISTORY_LIMIT=20;
         if(b==0)[self applyTheme:PDFThemeNormal];
         else if(b==1)[self applyTheme:PDFThemeSepia];
         else if(b==2)[self applyTheme:PDFThemeNight];
-        else if(b==3)[self setPageLocked:!_pageLocked];
+        else if(b==3)[self fitPage];
+        else if(b==4)[self fitWidth];
+        else if(b==5)[self setPageLocked:!_pageLocked];
         return;
     }
     if(s.tag!=100)return;
