@@ -1,18 +1,17 @@
 #import "PDFLibraryViewController.h"
 #import "PDFReaderViewController.h"
 #import "RecentStore.h"
-#import "NetworkCenterViewController.h"
 @implementation PDFLibraryViewController
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title=@"PDF Dosyaları";
-    self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Ağ" style:UIBarButtonItemStylePlain target:self action:@selector(showNetwork)] autorelease];
+    self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Dosyalar" style:UIBarButtonItemStylePlain target:self action:@selector(showFiles)] autorelease];
     _emptyLabel=[[UILabel alloc] initWithFrame:CGRectZero];
     _emptyLabel.textAlignment=UITextAlignmentCenter;
     _emptyLabel.numberOfLines=0;
     _emptyLabel.backgroundColor=[UIColor clearColor];
-    _emptyLabel.text=@"Henüz PDF yok.\n\niPad1Files/Downloads veya PDFs klasörüne PDF koyun\nya da iTunes File Sharing kullanın.";
+    _emptyLabel.text=@"Henüz PDF yok.\n\niPad1Files içinden bir PDF seçin\nya da ortak PDF/Downloads klasörlerine dosya koyun.";
     [self.tableView addSubview:_emptyLabel];
     [self reloadPDFList];
 }
@@ -74,7 +73,21 @@
     [self openPDFAtPath:[item objectForKey:@"path"]];
 }
 
-- (void)showNetwork { [self.navigationController pushViewController:[[[NetworkCenterViewController alloc] initWithStyle:UITableViewStyleGrouped] autorelease] animated:YES]; }
+- (void)showFiles {
+    NSURL *url=[NSURL URLWithString:@"ipad1files://pick?callback=ipad1pdf"];
+    UIApplication *app=[UIApplication sharedApplication];
+    if(url&&[app canOpenURL:url]) {
+        [app openURL:url];
+        return;
+    }
+
+    UIAlertView *alert=[[[UIAlertView alloc] initWithTitle:@"iPad1Files Bulunamadı"
+                                                   message:@"Dosya seçmek için iPad1Files uygulamasını kurun."
+                                                  delegate:nil
+                                         cancelButtonTitle:@"Tamam"
+                                         otherButtonTitles:nil] autorelease];
+    [alert show];
+}
 
 - (BOOL)isStableDirectPath:(NSString *)path {
     if([path hasPrefix:@"/var/mobile/Media/iPad1Files/"])return YES;
