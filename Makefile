@@ -23,15 +23,12 @@ iPad1PDFReader_FILES = \
 	PDFTextExtractor.m \
 	SearchViewController.m \
 	ReflowViewController.m \
-	URLImportViewController.m \
-	NetworkCenterViewController.m \
-	WebDAVClient.m \
 	PageManager.m \
 	PageManagerViewController.m \
 	PDFAnnotationExporter.m \
 	MemoryBudget.m
 
-iPad1PDFReader_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore CFNetwork
+iPad1PDFReader_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore
 iPad1PDFReader_CFLAGS = -fno-objc-arc -Wall
 iPad1PDFReader_RESOURCE_DIRS = Resources
 iPad1PDFReader_INSTALL_PATH = /Applications
