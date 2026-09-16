@@ -33,9 +33,10 @@ Owns:
 - file information;
 - local search;
 - Open With / cross-app launch;
-- ordinary extension-based suite routing.
+- ordinary extension-based suite routing;
+- general ZIP/archive browsing, extraction and creation.
 
-Must not become a PDF engine, media player or FTP engine.
+Must not become a PDF/DOCX rendering engine, media player or FTP engine.
 
 ### iPad1FTPDownloader
 Owns:
@@ -47,7 +48,7 @@ Owns:
 - saved servers;
 - remote file operations.
 
-Must not become a general file manager, PDF reader or media player.
+Must not become a general file manager, document reader or media player.
 
 ### iPad1Player
 Owns:
@@ -56,22 +57,20 @@ Owns:
 - subtitle discovery/rendering;
 - playback controls and media-session behavior.
 
-Must not become a general file manager, downloader or PDF reader.
+Must not become a general file manager, downloader or document reader.
 
 ### iPad1PDFReader
-Owns:
-- PDF rendering;
-- zoom and navigation;
-- search/reflow;
-- bookmarks;
-- outline;
-- annotations/highlights/notes/signature;
-- PDF page operations/export;
-- lightweight read-only viewing of supported plain-text files.
+Owns read-only document consumption for:
+- PDF rendering/search/reflow/bookmarks/annotations/page operations/export;
+- supported plain-text files;
+- Markdown reading;
+- planned lightweight DOCX reading.
 
-Text Reader v1 does **not** own editing, save, rename, delete, copy/move, syntax parsing or file management.
+The app does **not** own editing/save, rename/delete/copy/move, general archive handling, general file management, network transfer or media playback.
 
-PDFReader is not the suite's normal file router. Normal extension mapping belongs in iPad1Files. PDFReader may only reject or safely hand off a misrouted path as a fallback.
+A DOCX file is ZIP-based, but a tiny read-only package/XML path used internally only to read `.docx` is considered part of document parsing. It must never expose general ZIP/file-management UI.
+
+PDFReader remains not the suite's normal file router. Normal extension mapping belongs in iPad1Files.
 
 ## Canonical shared filesystem
 Owned by iPad1Files:
@@ -102,33 +101,21 @@ Default destination for iPad1FTPDownloader should be:
 /var/mobile/Media/iPad1Files/Downloads/
 ```
 
-A downloaded file must not be duplicated into a second downloader-private download folder merely for integration.
+A downloaded file must not be duplicated into a second downloader-private folder merely for integration.
 
-Example PDF:
-
-```text
-FTP/HTTP server
-  -> iPad1FTPDownloader
-  -> /var/mobile/Media/iPad1Files/Downloads/book.pdf
-  -> iPad1Files sees the same physical file
-  -> iPad1PDFReader opens the same physical file
-```
-
-The same single-file principle applies to supported text and media files.
+The same single-file principle applies to PDF, text, Markdown, DOCX and media files.
 
 ## PDFReader discovery contract
-PDFReader should directly discover at least:
+PDFReader may directly discover shared PDFs from:
 
 ```text
 /var/mobile/Media/iPad1Files/PDFs
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
-Shared PDFs should open in-place where permissions allow.
-
-Text files do not need to be duplicated into PDFReader storage. They are primarily opened by iPad1Files handoff and should open in-place.
-
 This direct discovery is a bounded PDF-library convenience and must not evolve into a general filesystem browser.
+
+Text, Markdown and DOCX files are primarily opened by iPad1Files handoff and should open in-place without duplicate copies.
 
 ## PDFReader receiver contract
 Authoritative receiver contract remains:
@@ -137,19 +124,22 @@ Authoritative receiver contract remains:
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-The scheme name is retained for backward compatibility even though the receiver can now route supported text files.
+The historical scheme name is retained for backward compatibility even though the app reads more than PDF.
 
 Rules:
 - sender passes an absolute path;
 - path must be percent-encoded;
 - receiver validates file existence before opening;
-- `.pdf` routes to existing PDF Reader;
-- supported text extensions route to Text Reader;
-- unsupported extensions show a user-visible unsupported-file message or may use a narrowly scoped known-specialist fallback;
+- `.pdf` -> `PDFReaderViewController`;
+- plain-text extensions -> `TextReaderViewController`;
+- `.md` -> `TextReaderViewController`, with optional Markdown formatted mode when implemented;
+- `.docx` -> planned `DocumentReaderViewController` only after implementation is physically proven;
+- `.doc` remains unsupported until a separate feasibility phase passes;
+- unsupported extensions show a user-visible unsupported-file message or a narrowly scoped specialist fallback;
 - shared iPad1Files files must not be copied solely because of handoff;
 - ordinary external `Open In` files may still be copied to an app-owned persistent location when necessary.
 
-Supported Text Reader extensions:
+Supported plain-text family:
 
 ```text
 .txt
@@ -166,12 +156,12 @@ Supported Text Reader extensions:
 ```
 
 ## Open With direction
-Extension mapping in iPad1Files may route:
+Current/proven mappings in iPad1Files may route:
 
 ```text
 .pdf  -> iPad1PDFReader / PDF Reader
 .txt  -> iPad1PDFReader / Text Reader
-.md   -> iPad1PDFReader / Text Reader
+.md   -> iPad1PDFReader / Text/Markdown Reader
 .log  -> iPad1PDFReader / Text Reader
 .csv  -> iPad1PDFReader / Text Reader
 .json -> iPad1PDFReader / Text Reader
@@ -188,7 +178,56 @@ Extension mapping in iPad1Files may route:
 .avi  -> iPad1Player
 ```
 
+Planned mapping, **only after DOCX reader physical validation**:
+
+```text
+.docx -> iPad1PDFReader / Document Reader
+```
+
+Do not add `.doc` to the supported registry until its binary-format feasibility work is complete and physically proven.
+
 Future mappings belong in the iPad1Files registry rather than hard-coding every app relationship into PDFReader.
+
+## Markdown policy
+Markdown stays read-only.
+
+Current safe baseline:
+- UTF-8 plain text;
+- 2 MiB hard source limit;
+- A-/A+;
+- Word Wrap;
+- Find/Next/Previous.
+
+Planned formatted mode may support a small subset of headings, emphasis, lists, blockquotes, code and basic links, while preserving plain-text fallback.
+
+No JavaScript, remote asset loading, browser behavior, editing/save, OCR or AI.
+
+## DOCX policy
+DOCX support is text-first and read-only.
+
+Planned v1:
+- paragraphs;
+- basic headings;
+- bold/italic runs;
+- line breaks;
+- simple lists;
+- simple tables;
+- Find/Next/Previous;
+- A-/A+;
+- file path/size Info.
+
+Initial engineering guards to validate on device:
+- compressed `.docx` target max **8 MiB**;
+- primary XML/text working-set target max **4 MiB**;
+- only required XML parts are parsed;
+- no persistent whole-package extraction solely for reading;
+- embedded images deferred until text-first mode is stable;
+- no macros, remote relationships, Office SDK, LibreOffice engine, full Word pagination, editing/save, OCR or AI.
+
+## Legacy DOC policy
+Classic `.doc` is a separate binary format and is not covered by DOCX parsing.
+
+Only a compact text-extraction feasibility study is allowed initially. If it requires a heavy office engine or unsafe memory footprint, `.doc` remains unsupported.
 
 ## PDF-specific media handoff
 PDFReader does not decode/play media.
@@ -199,14 +238,6 @@ If a PDF interaction resolves to an **already-local media file**, PDFReader may 
 ipad1player://open?path=<percent-encoded-absolute-path>
 ```
 
-Typical supported local-video fallback extensions:
-
-```text
-.mkv .mp4 .mov .m4v .avi
-```
-
-This path is allowed only as a PDF-specific integration/fallback. It does not transfer normal suite routing ownership from iPad1Files to PDFReader.
-
 If the media target is remote and requires downloading first:
 
 ```text
@@ -215,28 +246,15 @@ PDFReader -> iPad1FTPDownloader -> shared storage -> iPad1Player
 
 PDFReader must not implement the transfer itself.
 
-## Text Reader policy
-Version 1 is intentionally small:
-- UTF-8;
-- `UITextView`;
-- read-only;
-- A- / A+;
-- Word Wrap toggle;
-- Find / Next / Previous;
-- file info including full path;
-- 2 MiB hard full-load limit.
-
-No editing/save, syntax highlighting, Markdown rendering, JSON/XML parsing, OCR, AI or ML.
-
 ## Networking policy
 Existing lightweight HTTP/FTP/WebDAV code inside PDFReader is maintenance-only.
 
-New transfer features should normally go to iPad1FTPDownloader instead of PDFReader.
+New transfer features belong to iPad1FTPDownloader.
 
-Do not add `libsmb2`, `libssh2`, cloud SDKs or other heavy stacks to PDFReader merely to match competitors.
+Do not add cloud SDKs or other heavy stacks to PDFReader merely to match competitors.
 
 ## OCR / AI policy
-No device-side OCR or AI/ML in these apps for this hardware target.
+No device-side OCR or AI/ML for this hardware target.
 
 If OCR is needed:
 
@@ -251,21 +269,14 @@ Whenever possible:
 one logical file = one physical file
 ```
 
-Avoid workflows such as:
-
-```text
-iPad1FTPDownloads/book.pdf
-+ iPad1Files/Downloads/book.pdf
-+ PDFReader/Documents/book.pdf
-```
-
-when all applications can safely reference the shared file instead.
+Avoid duplicate copies across Downloader, Files and PDFReader storage when all applications can safely reference the shared file.
 
 ## Change-control rule
 Any change to:
 - canonical root;
 - common folder names;
 - URL schemes;
+- supported document routing;
 - application responsibility boundaries;
 - AppData namespaces;
 
