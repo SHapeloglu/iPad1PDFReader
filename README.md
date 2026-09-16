@@ -1,8 +1,14 @@
 # iPad1PDFReader
 
-A lightweight advanced PDF reader built specifically for the **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7**, with a deliberately small read-only Text Reader for plain-text files handed off by iPad1Files.
+A lightweight **read-only document reader** built specifically for the **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7**.
 
-The project deliberately prioritizes **stability, bounded memory and clear responsibility boundaries** over feature count.
+The historical project name is retained for compatibility, but the reading scope now covers:
+
+```text
+PDF + plain text + Markdown + planned DOCX
+```
+
+The project deliberately prioritizes **stability, bounded memory and clear responsibility boundaries** over feature count or desktop fidelity.
 
 ## Current development state
 Current work lives on:
@@ -11,7 +17,7 @@ Current work lives on:
 feature/text-reader-v1
 ```
 
-The combined branch clean-builds and has been launched on the physical iPad 1. Several reading/highlight features are physically validated; remaining handoff/Text Reader regressions are tracked in `SESSION.md` and `TESTING.md`.
+The branch already contains advanced PDF and Text Reader work. Several PDF features are physically validated; newer PDF annotation changes, Markdown formatted mode and DOCX reading are tracked separately in `SESSION.md`, `TASKS.md` and `TESTING.md`.
 
 ## Ecosystem
 This app is one specialist in a modular iPad 1 suite:
@@ -33,8 +39,8 @@ iPad1VNC
   -> remote desktop
 
 iPad1PDFReader
-  -> PDF read/search/reflow/bookmark/annotation/page management
-  -> lightweight read-only text viewing
+  -> lightweight read-only document reading
+  -> PDF + text + Markdown + planned DOCX
 ```
 
 The applications should **complement, not duplicate, each other**.
@@ -47,21 +53,14 @@ Canonical shared root:
 /var/mobile/Media/iPad1Files
 ```
 
-PDFReader discovers shared PDFs from at least:
-
-```text
-/var/mobile/Media/iPad1Files/PDFs
-/var/mobile/Media/iPad1Files/Downloads
-```
-
-Text files are primarily opened by iPad1Files handoff and should use the same physical file in-place.
-
 ## URL handoff
-PDF/text receiver:
+Document receiver:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
+
+The scheme keeps the historical `ipad1pdf` name for backward compatibility.
 
 Picker request:
 
@@ -69,74 +68,117 @@ Picker request:
 ipad1files://pick?callback=ipad1pdf
 ```
 
-Routing into PDFReader:
+Routing into the app:
 - `.pdf` -> PDF Reader;
-- `.txt`, `.md`, `.log`, `.csv`, `.json`, `.xml`, `.sql`, `.py`, `.sh`, `.ini`, `.conf` -> Text Reader;
-- unsupported extension -> user-visible safe failure or narrowly scoped specialist fallback.
+- `.txt`, `.log`, `.csv`, `.json`, `.xml`, `.sql`, `.py`, `.sh`, `.ini`, `.conf` -> Text Reader;
+- `.md` -> Text Reader now, optional formatted Markdown mode planned;
+- `.docx` -> planned Document Reader after physical validation;
+- `.doc` -> not supported until separate binary-format feasibility work succeeds.
 
-Normal extension-based routing across the suite belongs to **iPad1Files**, not PDFReader.
+Normal extension-based routing across the suite belongs to **iPad1Files**.
 
-If a PDF-specific interaction resolves to an already-local media file, PDFReader may hand it to Player:
-
-```text
-ipad1player://open?path=<percent-encoded-absolute-path>
-```
-
-Typical local video types include `.mkv`, `.mp4`, `.mov`, `.m4v`, `.avi`. PDFReader must not decode or play them itself. If a media resource must first be downloaded from the network, transfer ownership remains with iPad1FTPDownloader.
-
-## PDFReader features
+## PDF features
 - Core Graphics PDF rendering;
 - one active full page at a time;
 - pinch/double-tap zoom;
-- page navigation;
+- Fit Page / Fit Width;
+- page navigation and edge-tap support;
 - bookmarks + resume-last-page;
 - bounded thumbnails;
 - incremental text search with progress/cancel;
 - page-at-a-time Reflow;
-- outline support;
-- bounded document navigation for bookmarks/notes/highlights;
+- bounded outline support;
+- bounded `Gezinti Merkezi`;
 - drawing;
-- page notes;
+- notes;
 - region highlight;
-- bounded page-local text highlight;
-- fluorescent highlight palette;
-- highlight edit/recolor/delete;
+- page-local semantic Highlight / Underline / Strikeout;
+- direct note/text-mark interaction;
+- fluorescent mark palette;
 - simple signature;
 - flattened annotation export;
 - page reorder/delete/rotate/export;
 - bounded reading-location Back/Forward;
-- Day/Sepia/Night appearance modes;
+- Day/Sepia/Night;
 - Page Lock;
-- edge-tap navigation support;
-- iPad1Files shared-storage handoff.
+- shared-storage handoff.
 
-## Text Reader v1
+## Text Reader
 Supported extensions:
 
 ```text
 .txt .md .log .csv .json .xml .sql .py .sh .ini .conf
 ```
 
-All are displayed as **plain text**.
-
-Features:
+Current baseline:
 - legacy `UITextView`;
 - UTF-8;
 - read-only;
 - file name in title;
 - full path and size in Info;
-- A- / A+ font size;
-- Word Wrap on/off;
+- A- / A+;
+- Word Wrap;
 - Find / Next / Previous;
-- 2 MiB hard full-load source-file limit.
+- 2 MiB hard source-file limit.
 
-Not included:
-- editing/save;
-- syntax highlighting;
-- Markdown rendering;
-- JSON/XML parsing;
-- OCR;
-- AI/ML.
+No editing/save, syntax highlighting, JSON/XML parsing, OCR or AI/ML.
+
+## Markdown Reader v2 — planned
+`.md` will keep the existing plain-text fallback and may optionally render a small read-only subset:
+- headings;
+- bold/italic;
+- bullet/numbered lists;
+- blockquotes;
+- inline/fenced code;
+- horizontal rules;
+- basic links.
+
+Constraints:
+- 2 MiB source limit remains;
+- no JavaScript;
+- no remote assets;
+- no web-browser behavior;
+- no full CommonMark/GFM compliance requirement;
+- no background indexing.
+
+Markdown tables, embedded HTML and images are deferred until physical profiling.
+
+## DOCX Reader v1 — planned
+DOCX support will live inside this app in a separate `DocumentReaderViewController`.
+
+Goal: **readable Word content, not pixel-identical Word layout**.
+
+Initial target:
+- read-only `.docx`;
+- paragraphs;
+- basic headings;
+- bold/italic runs;
+- line breaks;
+- simple bullets/numbering;
+- simple tables;
+- Find / Next / Previous;
+- A- / A+;
+- path/size Info;
+- malformed-package safe failure.
+
+DOCX-specific read-only ZIP/XML parsing is allowed as an internal implementation detail. General ZIP browsing/extraction remains an `iPad1Files` feature.
+
+Initial engineering guards to validate on the physical device:
+- compressed DOCX target max **8 MiB**;
+- primary XML/text working-set target max **4 MiB**;
+- no persistent whole-package extraction solely for reading;
+- embedded images deferred until text-first mode is stable;
+- no Office SDK;
+- no LibreOffice engine;
+- no full desktop Word pagination;
+- no macros/remote relationships;
+- no editing/save;
+- no OCR/AI.
+
+## Legacy `.doc`
+Classic binary `.doc` is a separate format from `.docx`.
+
+Only a compact text-extraction feasibility study is planned initially. If safe support requires a heavy office engine or unsafe RAM usage, `.doc` remains unsupported.
 
 ## Memory policy
 Hard rules:
@@ -145,8 +187,11 @@ Hard rules:
 - PDF search results max **40**;
 - PDF search page-by-page;
 - Reflow page-by-page;
+- outline parse max **80**;
 - document navigation annotation summary max **80**, max **40 per kind**;
-- Text Reader source file max **2 MiB** for full load;
+- Text/Markdown source file max **2 MiB** for full load;
+- planned DOCX compressed-file target max **8 MiB**;
+- planned DOCX primary XML/text working-set target max **4 MiB**;
 - no whole-document bitmap cache;
 - no persistent whole-document PDF text index;
 - no on-device OCR;
@@ -159,8 +204,9 @@ Preferred engineering targets:
 - special operations ideally well below **70–90 MB**.
 
 ## Features intentionally delegated
-Do not grow these inside PDFReader:
+Do not grow these inside iPad1PDFReader:
 - general filesystem manager and normal suite routing -> **iPad1Files**;
+- general ZIP/archive UI -> **iPad1Files**;
 - HTTP/HTTPS/FTP/WebDAV download/upload/queue/resume/retry -> **iPad1FTPDownloader**;
 - video/audio/subtitle playback -> **iPad1Player**;
 - shell/system workflows -> **iPad1Terminal**;
@@ -202,4 +248,4 @@ Before development read:
 Then continue from `SESSION.md -> Immediate next action`.
 
 ## Golden rule
-**If a feature belongs to another suite app, hand it off. If a PDF feature risks stability on Apple A4 / 256 MB RAM / iOS 5.1.1, redesign it as page-local/bounded or do not add it.**
+**If a feature belongs to another suite app, hand it off. If a document-reading feature risks stability on Apple A4 / 256 MB RAM / iOS 5.1.1, redesign it as bounded/chunked or do not add it.**
