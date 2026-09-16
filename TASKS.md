@@ -22,40 +22,48 @@ Validate:
 - [ ] iPad1Files picker callback validation.
 
 ## Priority 1 — Markdown Reader v2
-Goal: keep `.md` readable on iPad 1 even when formatting cannot be rendered.
+Goal: keep `.md` readable on iPad 1 without adding a browser/HTML engine or a document-wide layout cache.
 
-Base behavior:
-- [x] `.md` currently opens as UTF-8 plain text in `TextReaderViewController`;
-- [x] read-only;
+Implemented in source:
+- [x] `.md` opens through `TextReaderViewController`;
+- [x] read-only UTF-8;
 - [x] A-/A+;
 - [x] Word Wrap;
 - [x] Find / Next / Previous;
-- [x] 2 MiB hard source-file limit.
+- [x] 2 MiB hard source-file limit;
+- [x] Markdown files start in lightweight reading mode;
+- [x] `Kaynak` / `MD Oku` toggle;
+- [x] headings are converted to readable heading markers;
+- [x] bold/italic/backtick syntax markers are removed for reading mode;
+- [x] bullet lists are normalized to bullets;
+- [x] blockquotes are shown with a lightweight quote marker;
+- [x] fenced code blocks are preserved as indented code text;
+- [x] horizontal rules are rendered as a lightweight text rule;
+- [x] links remain readable as `label <URL>`;
+- [x] image syntax is represented as a text placeholder rather than decoding images;
+- [x] plain Markdown source remains available;
+- [x] no JavaScript;
+- [x] no remote asset loading;
+- [x] no full CommonMark/GFM requirement;
+- [x] no background/document-wide index.
 
-Planned formatted reading mode:
-- [ ] add optional `Markdown Görünümü` toggle;
-- [ ] headings `#`..`######`;
-- [ ] bold;
-- [ ] italic;
-- [ ] bullet lists;
-- [ ] numbered lists;
-- [ ] blockquote;
-- [ ] inline code;
-- [ ] fenced code blocks;
-- [ ] horizontal rule;
-- [ ] basic links as readable text/URL;
-- [ ] retain plain-text fallback;
-- [ ] no JavaScript;
-- [ ] no remote asset loading;
-- [ ] no full CommonMark/GFM requirement;
-- [ ] no background/document-wide index;
-- [ ] physical test with small/medium Markdown files;
-- [ ] verify memory remains bounded after repeated mode switching.
+Important v2.0 limitation:
+- [x] no rich inline font styling in this first iOS 5-safe pass; emphasis semantics are made readable by removing Markdown markers rather than introducing a heavier HTML/WebView or modern attributed-text dependency.
+
+Needs physical validation:
+- [ ] small and medium `.md` files;
+- [ ] Turkish UTF-8 characters;
+- [ ] headings/lists/quotes/code/link conversion;
+- [ ] repeated `Kaynak` / `MD Oku` switching;
+- [ ] Find/Next/Previous in both modes;
+- [ ] A-/A+ and Wrap in both modes;
+- [ ] no progressive memory growth after repeated mode switching.
 
 Deferred until profiling:
 - [ ] Markdown tables;
 - [ ] embedded HTML;
-- [ ] local/remote image rendering.
+- [ ] local image rendering;
+- [ ] richer inline typography only if legacy-safe and memory-cheap.
 
 ## Priority 2 — DOCX Reader v1
 Goal: readable Word document content, not desktop Word fidelity.
@@ -71,7 +79,7 @@ V1 content support:
 - [ ] extract `word/document.xml`;
 - [ ] paragraphs;
 - [ ] line breaks;
-- [ ] basic bold/italic runs;
+- [ ] basic bold/italic runs where feasible without a heavy layout engine;
 - [ ] headings where safely derivable;
 - [ ] simple bullets/numbering;
 - [ ] simple tables as lightweight rows/text;
@@ -125,7 +133,7 @@ Do not claim `.doc` support until it builds, runs and is physically validated.
 - [ ] open/close several large PDFs sequentially;
 - [ ] rotate/zoom/page-change stress test;
 - [ ] repeated open/close text and Markdown files under 2 MiB;
-- [ ] repeated Markdown mode toggle when implemented;
+- [ ] repeated Markdown mode toggle;
 - [ ] repeated DOCX open/close when implemented;
 - [ ] DOCX malformed package failure path;
 - [ ] DOCX large-file rejection before expensive parse;
