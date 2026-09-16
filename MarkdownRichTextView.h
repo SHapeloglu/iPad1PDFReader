@@ -11,7 +11,6 @@
 @property(nonatomic,readonly) NSString *plainText;
 @property(nonatomic,assign) CGFloat baseFontSize;
 - (void)setMarkdownSource:(NSString *)source;
-- (void)setPlainText:(NSString *)text styles:(NSArray *)styles;
 - (CGFloat)contentHeightForWidth:(CGFloat)width;
 - (CGFloat)yOffsetForCharacterIndex:(NSUInteger)index;
 @end
