@@ -5,7 +5,7 @@
 static const unsigned long long IPAD1_MD_MAX_BYTES = 2ULL * 1024ULL * 1024ULL;
 static const CGFloat IPAD1_MD_MIN_FONT = 10.0f;
 static const CGFloat IPAD1_MD_MAX_FONT = 28.0f;
-static const CGFloat IPAD1_MD_DEFAULT_FONT = 16.0f;
+static const CGFloat IPAD1_MD_DEFAULT_FONT = 18.0f;
 
 @implementation MarkdownReaderViewController
 
