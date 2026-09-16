@@ -2,6 +2,7 @@
 #import "PDFReaderViewController.h"
 #import "TextReaderViewController.h"
 #import "MarkdownReaderViewController.h"
+#import "DocumentReaderViewController.h"
 #import "RecentStore.h"
 #import "NetworkCenterViewController.h"
 @implementation PDFLibraryViewController
@@ -78,6 +79,13 @@
     return YES;
 }
 
+- (BOOL)openDOCXAtPath:(NSString *)path {
+    if(!path||![[[path pathExtension] lowercaseString] isEqualToString:@"docx"]||![[NSFileManager defaultManager] fileExistsAtPath:path])return NO;
+    [RecentStore touchPath:path];
+    [self.navigationController pushViewController:[[[DocumentReaderViewController alloc] initWithDocumentPath:path] autorelease] animated:YES];
+    return YES;
+}
+
 - (BOOL)openTextAtPath:(NSString *)path {
     if(!path||![TextReaderViewController isSupportedTextPath:path]||![[NSFileManager defaultManager] fileExistsAtPath:path])return NO;
     [RecentStore touchPath:path];
@@ -100,6 +108,7 @@
     NSString *ext=[[path pathExtension] lowercaseString];
     if([ext isEqualToString:@"pdf"]) return [self openPDFAtPath:path];
     if([ext isEqualToString:@"md"]) return [self openMarkdownAtPath:path];
+    if([ext isEqualToString:@"docx"]) return [self openDOCXAtPath:path];
     if([TextReaderViewController isSupportedTextPath:path]) return [self openTextAtPath:path];
     [self showUnsupportedFileAtPath:path];
     return NO;
@@ -148,7 +157,7 @@
     if(![url isFileURL])return;
     NSString *source=[url path];
     NSString *ext=[[source pathExtension] lowercaseString];
-    BOOL supported=[ext isEqualToString:@"pdf"]||[TextReaderViewController isSupportedTextPath:source];
+    BOOL supported=[ext isEqualToString:@"pdf"]||[ext isEqualToString:@"docx"]||[TextReaderViewController isSupportedTextPath:source];
     if(!supported){[self showUnsupportedFileAtPath:source];return;}
     if([self isStableDirectPath:source]){[self openDocumentAtPath:source];return;}
     NSString *dst=[[self documentsDirectory] stringByAppendingPathComponent:[source lastPathComponent]];
