@@ -13,6 +13,9 @@ iPad1PDFReader_FILES = \
 	TextReaderViewController.m \
 	MarkdownReaderViewController.m \
 	MarkdownRichTextView.m \
+	DocumentReaderViewController.m \
+	DocumentRichTextView.m \
+	DOCXReader.m \
 	PDFPageView.m \
 	BookmarkStore.m \
 	RecentStore.m \
@@ -35,6 +38,7 @@ iPad1PDFReader_FILES = \
 	MemoryBudget.m
 
 iPad1PDFReader_FRAMEWORKS = UIKit Foundation CoreGraphics CoreText QuartzCore CFNetwork
+iPad1PDFReader_LIBRARIES = z
 iPad1PDFReader_CFLAGS = -fno-objc-arc -Wall
 iPad1PDFReader_RESOURCE_DIRS = Resources
 iPad1PDFReader_INSTALL_PATH = /Applications
