@@ -82,7 +82,8 @@ Implemented in source:
 - Fit Page / Fit Width;
 - Page Manager and flattened annotation export;
 - shared iPad1Files PDF discovery;
-- lightweight read-only TextReader.
+- lightweight read-only TextReader;
+- lightweight Markdown Reader v2 mode inside TextReader.
 
 ## Text Reader v1
 Supported extensions:
@@ -95,31 +96,40 @@ Current behavior:
 - A-/A+, Word Wrap, Find/Next/Previous;
 - file path + size Info;
 - max full-load source size **2 MiB**;
-- `.md` currently opens as plain text;
 - no edit/save, syntax highlighting, JSON/XML parsing, OCR, AI/ML.
 
-## Markdown Reader v2 — approved scope, not implemented yet
-`.md` remains supported in plain-text mode and will gain an optional lightweight formatted reading mode.
+## Markdown Reader v2 — implemented in source, not physically proven
+`.md` now opens in a lightweight reading mode by default while keeping the original source available.
 
-Target subset:
-- headings;
-- bold/italic;
-- bullet/numbered lists;
-- blockquote;
-- inline/fenced code;
-- horizontal rule;
-- basic link text/URL.
+Implemented subset:
+- `Kaynak` / `MD Oku` toggle;
+- headings become lightweight readable heading markers;
+- Markdown bold/italic/backtick markers are removed in reading mode so text remains readable;
+- bullet lists normalize to `•`;
+- numbered-list text remains readable;
+- blockquotes use a lightweight text marker;
+- fenced code blocks remain visible as indented code text;
+- horizontal rules become lightweight text rules;
+- links remain readable as `label <URL>`;
+- image Markdown is represented as a text placeholder instead of decoding an image;
+- search/font/wrap continue to operate on the active displayed mode;
+- original file is never edited.
 
-Rules:
-- plain-text fallback always remains available;
-- 2 MiB source limit remains;
+Important limitation:
+- this first pass deliberately does **not** introduce rich inline typography or a browser/HTML engine. It is a low-memory semantic reading transformation over the existing bounded `UITextView` path.
+
+Rules retained:
+- source limit remains **2 MiB**;
 - no JavaScript;
 - no remote assets;
-- no web-browser behavior;
-- no full CommonMark/GFM compliance requirement;
+- no full CommonMark/GFM requirement;
 - no document-wide background index.
 
-Markdown tables, embedded HTML and images are deferred until physical profiling proves them safe.
+Deferred:
+- Markdown tables;
+- embedded HTML;
+- local image rendering;
+- richer inline typography only if legacy-safe and physically proven cheap.
 
 ## DOCX Reader v1 — approved scope, not implemented yet
 A separate `DocumentReaderViewController` will handle `.docx` inside the same application.
@@ -132,7 +142,7 @@ Initial target:
 - paragraphs;
 - line breaks;
 - basic headings;
-- bold/italic runs;
+- bold/italic runs where feasible;
 - simple bullets/numbering;
 - simple tables;
 - Find / Next / Previous;
@@ -181,7 +191,9 @@ PDF:
 
 Text/Markdown:
 - source full-load max **2 MiB**;
-- no background index.
+- no background index;
+- Markdown reading mode creates only a temporary transformed string for the currently open document;
+- no HTML DOM/WebView/browser cache.
 
 Planned DOCX:
 - initial compressed-file target max **8 MiB**;
@@ -211,9 +223,10 @@ Source changes made after that physical build are **NOT PASS yet**:
 - direct Highlight tap;
 - Underline;
 - Strikeout;
-- Underline/Strikeout flattened export.
+- Underline/Strikeout flattened export;
+- Markdown Reader v2 reading/source toggle and transformations.
 
-Markdown formatted mode and DOCX reader are **planned only**, not implemented and not PASS.
+DOCX reader is **planned only**, not implemented and not PASS.
 
 ## iPad1Files external work
 `ipad1files://pick?callback=ipad1pdf` belongs to iPad1Files.
@@ -248,16 +261,18 @@ ld: warning: building for iOS 5.1.0 is deprecated
 
 ## Immediate next action
 1. Pull latest `feature/text-reader-v1`.
-2. Clean-build the already implemented PDF annotation/reading changes.
+2. Clean-build with the legacy iPhoneOS 6.1 SDK / armv7 / iOS 5.1 target.
 3. Fix only real compile/runtime/MRC issues without changing platform constraints.
-4. Install and physically validate the current PDF feature package first.
-5. After the current branch is stable, implement **Markdown Reader v2** as an optional formatted mode while preserving plain-text fallback and the 2 MiB limit.
-6. Physically test Markdown mode for rendering, search, wrap/font behavior and repeated mode switching.
-7. Then implement **DOCX Reader v1 text-first** with a separate `DocumentReaderViewController` and bounded DOCX-specific package/XML reader.
-8. Start DOCX with paragraphs/basic runs/lists/tables/search/font controls; do not implement embedded images until text-first reading passes physical tests.
-9. Add `.docx` routing to the receiver and then to iPad1Files normal routing only after the DOCX path is physically proven.
-10. Evaluate legacy `.doc` separately; do not add a heavy binary Word engine.
-11. Do not mark Markdown formatted mode, DOCX or DOC as PASS before physical iPad 1 validation.
+4. Install on physical iPad 1.
+5. Run the pending PDF annotation/reading regression set.
+6. Open a small `.md` and verify reading mode starts by default.
+7. Test `Kaynak` / `MD Oku`, headings, lists, quotes, code, rules and links.
+8. Test Find/Next/Previous, A-/A+ and Wrap in both Markdown modes.
+9. Repeat Markdown mode switching 30 times and check for progressive slowdown/memory growth.
+10. Only after Markdown/PDF branch is stable, implement **DOCX Reader v1 text-first** with a separate `DocumentReaderViewController` and bounded DOCX-specific package/XML reader.
+11. Add `.docx` routing only after the DOCX path is physically proven.
+12. Evaluate legacy `.doc` separately; do not add a heavy binary Word engine.
+13. Do not mark Markdown formatted mode, DOCX or DOC as PASS before physical iPad 1 validation.
 
 ## New-chat starter
 ```text
@@ -268,6 +283,6 @@ SESSION.md authoritative handoff belgesidir.
 Current branch: feature/text-reader-v1
 Immediate next action bölümünden devam et.
 iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / Objective-C / Theos / legacy iPhoneOS 6.1 SDK / non-ARC-MRC sınırlarından sapma.
-Uygulama artık read-only document reader scope'unda PDF + text + Markdown + planlı DOCX okur; genel file manager/downloader/media işlerini kopyalama.
+Uygulama read-only document reader scope'unda PDF + text + Markdown + planlı DOCX okur; genel file manager/downloader/media işlerini kopyalama.
 Fiziksel cihazda doğrulanmamış özellikleri PASS kabul etme.
 ```
