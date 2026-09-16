@@ -1,7 +1,19 @@
 # ARCHITECTURE.md
 
 ## Goal
-Build the most capable PDF reader practical on an **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** without sacrificing stability for feature count. A small read-only Text Reader may handle plain-text handoff from iPad1Files, but PDF remains the primary purpose.
+Build the most capable **lightweight document reader** practical on an **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** without sacrificing stability for feature count.
+
+The app remains named `iPad1PDFReader` for compatibility, but its read-only scope now includes:
+
+```text
+.pdf                  -> PDFReaderViewController
+.txt/.log/.csv/...     -> TextReaderViewController
+.md                   -> TextReaderViewController + optional lightweight Markdown Reading Mode
+.docx                 -> DocumentReaderViewController (planned)
+.doc                  -> DocumentReaderViewController only after separate feasibility proof
+```
+
+The goal is **reading**, not Office-compatible editing or desktop layout fidelity.
 
 ## Immutable platform
 
@@ -18,15 +30,15 @@ TARGET = iphone:clang:6.1:5.1
 ## Feature classification
 Before implementation every feature is classified:
 - **Green**: low-memory, incremental, safe by design.
-- **Yellow**: useful but requires hard bounds, page-local processing and physical-device profiling.
+- **Yellow**: useful but requires hard bounds, page-local/chunked processing and physical-device profiling.
 - **Red**: reject for on-device implementation.
 
 Before memory classification, every feature also passes an **ownership gate**:
-1. Is the underlying operation specific to PDF or lightweight read-only text reading?
-2. Does another iPad1 companion app already own the operation?
-3. Can PDFReader launch that specialist through URL handoff/callback instead of duplicating its subsystem?
+1. Is the operation part of read-only document consumption?
+2. Does another iPad1 companion app already own the underlying subsystem?
+3. Can the specialist be called through URL handoff instead of duplicating a general-purpose engine?
 
-If another companion app owns the work, PDFReader implements only the handoff. See `COMPANION_APP_GUIDANCE.md`.
+Internal parsing needed to read a document format is allowed when it stays format-specific. For example, a tiny read-only ZIP/XML path used only to open a `.docx` package is part of the document reader; a general ZIP browser/extractor remains the responsibility of `iPad1Files`.
 
 Red examples:
 - OCR;
@@ -35,9 +47,10 @@ Red examples:
 - persistent full-document text indexes;
 - high-resolution multi-page caches;
 - heavy cloud SDKs;
-- heavy PDF engine replacement without measured proof.
+- embedded LibreOffice/Office engines;
+- full desktop Word pagination/layout engine.
 
-## Rendering
+## PDF Rendering
 `PDFPageView` uses Core Graphics / `CGPDFDocument`.
 Rules:
 - render one active full page at a time;
@@ -46,31 +59,107 @@ Rules:
 - purge disposable state on memory warning.
 
 ## Text Reader
-`TextReaderViewController` is deliberately separate from `PDFReaderViewController`.
+`TextReaderViewController` remains separate from `PDFReaderViewController`.
+
 Supported plain-text extensions:
 ```text
 .txt .md .log .csv .json .xml .sql .py .sh .ini .conf
 ```
-Version 1 rules:
-- `UITextView` only;
+
+Base Text Reader rules:
+- `UITextView`;
 - read-only;
 - UTF-8 only;
-- no Markdown rendering;
-- no syntax highlighting;
-- no JSON/XML parsing;
 - no editing/save;
+- no syntax highlighting;
+- no JSON/XML parser;
 - file name in navigation title;
 - full path available from Info;
 - font size controls;
 - wrap toggle;
-- Find / Next / Previous search over the currently loaded text only.
+- Find / Next / Previous over the currently loaded text only.
 
 Memory rule:
 - inspect file size before reading;
 - hard full-load limit: **2 MiB**;
 - files above the limit are not loaded into `UITextView`;
 - wrap-off width is bounded;
-- do not add background indexing or parsers.
+- no background index.
+
+### Markdown Reading Mode v2 — planned
+`.md` continues to open safely as plain text even if formatted mode fails or is disabled.
+
+Planned lightweight formatted subset:
+- headings `#` through `######`;
+- bold and italic;
+- bullet/numbered lists;
+- blockquote;
+- inline code and fenced code blocks;
+- horizontal rule;
+- basic links shown as readable text/URL.
+
+Rules:
+- no JavaScript;
+- no remote asset loading;
+- no general web browser behavior;
+- no full CommonMark/GFM compliance requirement;
+- no document-wide secondary index;
+- parser output must be bounded by the existing 2 MiB source-file rule;
+- plain-text mode remains the fallback and source-of-truth representation.
+
+Tables, embedded HTML and remote images are deferred until measured on the physical iPad 1.
+
+## DOCX Reader v1 — planned
+`DocumentReaderViewController` will be separate from both PDF and Text Reader controllers.
+
+Initial `.docx` goal is **readable content**, not pixel-identical Microsoft Word rendering.
+
+Allowed v1 scope:
+- open existing local `.docx` in-place;
+- read-only;
+- extract `word/document.xml` from the DOCX package;
+- paragraphs;
+- headings when safely derivable;
+- basic bold/italic runs;
+- line breaks;
+- basic bullet/numbered list representation;
+- simple tables rendered as lightweight rows/text;
+- Find / Next / Previous over the currently loaded document text;
+- A- / A+;
+- file name, path and size Info;
+- optional embedded images only after a strict size/downscale policy is physically proven.
+
+DOCX implementation rules:
+- package decompression is read-only and DOCX-specific; it must not expose a general ZIP UI;
+- parse only required XML parts;
+- do not extract the complete package to persistent storage merely to read it;
+- avoid DOM-like full package object graphs when streaming/incremental parsing is practical;
+- no macros;
+- no external template fetching;
+- no remote relationships/network loads;
+- no editing/save;
+- no tracked-change editing;
+- no comments editor;
+- no Office SDK;
+- no LibreOffice engine;
+- no desktop page-layout/pagination engine;
+- no OCR/AI.
+
+Initial safety targets, subject to physical profiling:
+- compressed `.docx` size target: **<= 8 MiB**;
+- primary document XML/text working-set target: **<= 4 MiB**;
+- one embedded image decoded at a time;
+- reject or skip oversized embedded media rather than risking memory pressure;
+- no resident full-resolution image gallery/cache.
+
+These are engineering guards, not claims of Word compatibility.
+
+## Legacy `.doc` — deferred
+Classic binary `.doc` is a different and substantially more complex format than `.docx`.
+
+Phase 1 does **not** ship a new binary Word engine. Before implementation, evaluate whether a compact text-extraction-only path can be built and physically profiled on iPad 1.
+
+If safe extraction cannot be achieved without a heavy dependency, `.doc` remains unsupported while `.docx` is supported.
 
 ## Thumbnails
 `ThumbnailViewController` is lazy and bounded.
@@ -85,8 +174,10 @@ Rules:
 - no resident document-wide text index;
 - max retained results: **40**.
 
+Text/Markdown/DOCX search operates only on the currently loaded bounded reading representation and does not create a persistent index.
+
 ## Reflow
-Reflow is page-scoped. Never concatenate the entire document into one large string.
+PDF Reflow is page-scoped. Never concatenate the entire PDF into one large string.
 
 ## Annotation architecture
 `AnnotationStore` persists lightweight dictionaries and `AnnotationOverlayView` draws them.
@@ -104,7 +195,6 @@ Supported/lightweight families:
 Highlight, underline and strikeout reuse only the active page's bounded text geometry.
 Rules:
 - extract/select only active-page geometry;
-- max temporary text geometry remains bounded by the extractor call;
 - persist compact page + rect list + color only;
 - discard temporary geometry on page change/memory warning;
 - no document-wide text index;
@@ -112,16 +202,9 @@ Rules:
 
 Highlight may fall back to a rectangular region on image/scanned pages. Underline and strikeout require selectable text and fail safely when none exists.
 
-Direct annotation interaction is also page-local and bounded. `PDFReaderViewController` examines at most **80 current-page annotations** for tap hit-testing. Existing note/highlight/underline/strikeout data is reused; no spatial index or background cache is created.
+Direct annotation interaction is page-local and bounded. `PDFReaderViewController` examines at most **80 current-page annotations** for tap hit-testing.
 
-Fluorescent/text-mark palette:
-- yellow;
-- green;
-- pink;
-- orange;
-- cyan/light blue.
-
-`PDFAnnotationExporter` produces a new flattened PDF and now draws highlight, underline and strikeout marks without adding a heavy editable `/Annots` engine.
+`PDFAnnotationExporter` produces a new flattened PDF and draws highlight, underline and strikeout marks without adding a heavy editable `/Annots` engine.
 
 ## Document navigation
 `DocumentNavigatorViewController` provides bounded navigation across outline/bookmarks/notes/text marks.
@@ -140,14 +223,14 @@ Hard limits:
 - export only after explicit save.
 
 ## Ecosystem boundary
-The application family is intentionally modular:
+The application family remains modular:
 ```text
 iPad1Files          -> filesystem backbone + normal suite routing
 iPad1FTPDownloader  -> HTTP/FTP/WebDAV/network transfer specialist
 iPad1Player         -> video/audio/subtitle playback specialist
 iPad1Terminal       -> shell/system command specialist
 iPad1VNC            -> remote desktop specialist
-iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
+iPad1PDFReader      -> lightweight read-only document specialist: PDF + text + Markdown + DOCX
 ```
 
 ### iPad1Files owns
@@ -157,7 +240,7 @@ iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 - Open With / file picker;
 - normal extension-based suite routing;
 - file classification/organization;
-- ZIP/archive management;
+- general ZIP/archive management;
 - general filesystem search.
 
 ### iPad1FTPDownloader owns
@@ -185,27 +268,27 @@ iPad1PDFReader      -> PDF specialist + lightweight read-only text viewer
 
 ### iPad1PDFReader owns
 - PDF rendering/read UX;
-- search/reflow;
-- bookmark/outline;
-- annotations including highlight/underline/strikeout;
-- page management/export;
-- PDF reading locations and recent-document history;
-- lightweight read-only rendering of supported plain-text files handed off by iPad1Files;
-- receiving document paths and launching companion specialists through narrowly scoped handoff.
+- PDF search/reflow/bookmarks/outlines/annotations/page management/export;
+- lightweight read-only plain-text reading;
+- lightweight Markdown reading;
+- lightweight read-only DOCX reading;
+- receiving supported document paths through the existing receiver contract.
 
-PDFReader is **not** the suite's normal file router. iPad1Files owns ordinary extension routing.
+PDFReader still does **not** own general filesystem management, network transfer, media playback, terminal or VNC functionality.
 
 ## Shared storage
 Canonical root:
 ```text
 /var/mobile/Media/iPad1Files
 ```
-PDFReader directly scans:
+
+PDFReader directly scans PDF library locations only:
 ```text
 /var/mobile/Media/iPad1Files/PDFs
 /var/mobile/Media/iPad1Files/Downloads
 ```
-This direct scan is a bounded PDF-library convenience only.
+
+Text/Markdown/DOCX are primarily opened by `iPad1Files` handoff and should open in-place. This must not evolve into a general filesystem browser.
 
 Cross-app contracts:
 ```text
@@ -213,6 +296,8 @@ ipad1pdf://open?path=<percent-encoded-absolute-path>
 ipad1files://pick?callback=ipad1pdf
 ipad1player://open?path=<percent-encoded-absolute-path>
 ```
+
+The historical `ipad1pdf` scheme remains for backward compatibility even though the app now reads multiple document formats.
 
 ## Networking
 Existing HTTP/FTP/WebDAV code in PDFReader is compatibility-only and scheduled for retirement after companion handoff is physically proven.
@@ -224,7 +309,7 @@ Rules:
 - release temporary objects aggressively;
 - local autorelease pools around repeated temporary work;
 - no uncontrolled parallel heavy work;
-- clear temporary text/geometry/list data on memory warning;
+- clear temporary text/geometry/XML/image/list data on memory warning;
 - never raise deployment target to solve coding convenience.
 
 ## Engineering RAM targets
@@ -234,9 +319,11 @@ Rules:
 
 ## Main components
 - `AppDelegate` — bootstrap + URL/Open In handoff.
-- `PDFLibraryViewController` — local/shared PDF discovery and document-type routing.
+- `PDFLibraryViewController` — PDF library convenience + document-type receiver routing.
 - `PDFReaderViewController` — PDF reader orchestration + bounded direct annotation hit-testing.
-- `TextReaderViewController` — bounded read-only UTF-8 text viewing.
+- `TextReaderViewController` — bounded read-only UTF-8 text viewing and future Markdown mode.
+- `DocumentReaderViewController` — planned bounded DOCX read-only viewing.
+- `DOCXReader` / equivalent parser — planned DOCX-specific read-only package/XML extraction.
 - `PDFPageView` — active-page rendering.
 - `BookmarkStore` — bookmark/last-page state.
 - `AppearanceStore` — reading appearance.
