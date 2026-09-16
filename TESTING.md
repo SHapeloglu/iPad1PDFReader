@@ -21,7 +21,7 @@ Required:
 ### Basic opening
 - [ ] Small `.txt` opens in Text Reader.
 - [ ] UTF-8 Turkish characters render correctly: `ç ğ ı İ ö ş ü Ç Ğ Ö Ş Ü`.
-- [ ] `.md`, `.log`, `.csv`, `.json`, `.xml`, `.sql`, `.py`, `.sh`, `.ini`, `.conf` open as plain text.
+- [ ] `.log`, `.csv`, `.json`, `.xml`, `.sql`, `.py`, `.sh`, `.ini`, `.conf` open as plain text.
 - [ ] Text remains read-only; no editing/save UI exists.
 - [ ] File name appears in navigation title.
 - [ ] Info shows full path and file size.
@@ -39,11 +39,39 @@ Required:
 - [ ] Word Wrap on/off works.
 - [ ] Rotation/relayout does not crash.
 
-### iPad1Files handoff
+## Markdown Reader v2
+Use `.md` files below the same 2 MiB Text Reader limit.
+
+### Reading mode
+- [ ] `.md` opens in Markdown reading mode by default.
+- [ ] `Kaynak` switches to original Markdown source.
+- [ ] `MD Oku` returns to reading mode.
+- [ ] headings `#`..`######` become readable heading markers.
+- [ ] `**bold**`, `*italic*`, `_italic_` and inline backticks remain readable with syntax markers removed.
+- [ ] `-`, `*`, `+` bullet items display as `•` items.
+- [ ] numbered-list text remains readable.
+- [ ] blockquotes display with the lightweight quote marker.
+- [ ] fenced code blocks remain visible as indented code text.
+- [ ] horizontal rules display as a lightweight text rule.
+- [ ] links display as readable `label <URL>` text.
+- [ ] Markdown image syntax does not decode/render an image; a readable text placeholder appears instead.
+- [ ] plain Markdown source is never modified on disk.
+
+### Markdown regressions
+- [ ] Find / Next / Previous work in reading mode.
+- [ ] Find / Next / Previous work after switching to source mode.
+- [ ] A+ / A- work in both modes.
+- [ ] Word Wrap works in both modes.
+- [ ] Turkish UTF-8 survives mode switching.
+- [ ] repeat `Kaynak` / `MD Oku` 30 times without crash or progressive slowdown.
+- [ ] open/close several Markdown files repeatedly without progressive memory growth.
+- [ ] no JavaScript, browser engine or remote asset fetch starts.
+
+## iPad1Files handoff
 - [ ] `ipad1files://pick?callback=ipad1pdf` opens picker under `/var/mobile/Media/iPad1Files`.
 - [ ] Callback survives nested folders.
 - [ ] PDF returns through `ipad1pdf://open?path=...`.
-- [ ] Supported text returns to Text Reader.
+- [ ] Supported text/Markdown returns to Text Reader.
 - [ ] Same physical file is used; no duplicate copy.
 - [ ] Percent-encoded spaces and Turkish characters decode correctly.
 - [ ] Unsupported extension fails visibly and safely.
@@ -158,6 +186,7 @@ Use disposable PDFs.
 - [ ] Direct annotation hit-test never scans more than 80 current-page annotations.
 - [ ] Text-mark selection uses max 160 temporary page rects and persists max 32 rects per mark.
 - [ ] Memory warning clears temporary text-mark selection geometry.
+- [ ] Text/Markdown source remains capped at 2 MiB.
 - [ ] Open/close several large PDFs sequentially.
 - [ ] Zoom/page-change for 10 minutes.
 - [ ] Rotate while zoomed repeatedly.
@@ -175,6 +204,6 @@ Use disposable PDFs.
 ## RAM engineering targets
 - normal PDF reading: roughly **30–50 MB preferred**;
 - special operations: ideally well below **70–90 MB**;
-- Text Reader source full-load max **2 MiB**;
+- Text/Markdown source full-load max **2 MiB**;
 - no unbounded arrays, document-wide PDF text retention, spatial annotation index or multi-page full-resolution bitmap cache;
 - sustained unbounded memory growth is a failure.
