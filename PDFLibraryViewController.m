@@ -1,6 +1,7 @@
 #import "PDFLibraryViewController.h"
 #import "PDFReaderViewController.h"
 #import "TextReaderViewController.h"
+#import "MarkdownReaderViewController.h"
 #import "RecentStore.h"
 #import "NetworkCenterViewController.h"
 @implementation PDFLibraryViewController
@@ -70,6 +71,13 @@
     return YES;
 }
 
+- (BOOL)openMarkdownAtPath:(NSString *)path {
+    if(!path||![[[path pathExtension] lowercaseString] isEqualToString:@"md"]||![[NSFileManager defaultManager] fileExistsAtPath:path])return NO;
+    [RecentStore touchPath:path];
+    [self.navigationController pushViewController:[[[MarkdownReaderViewController alloc] initWithMarkdownPath:path] autorelease] animated:YES];
+    return YES;
+}
+
 - (BOOL)openTextAtPath:(NSString *)path {
     if(!path||![TextReaderViewController isSupportedTextPath:path]||![[NSFileManager defaultManager] fileExistsAtPath:path])return NO;
     [RecentStore touchPath:path];
@@ -91,6 +99,7 @@
     }
     NSString *ext=[[path pathExtension] lowercaseString];
     if([ext isEqualToString:@"pdf"]) return [self openPDFAtPath:path];
+    if([ext isEqualToString:@"md"]) return [self openMarkdownAtPath:path];
     if([TextReaderViewController isSupportedTextPath:path]) return [self openTextAtPath:path];
     [self showUnsupportedFileAtPath:path];
     return NO;
