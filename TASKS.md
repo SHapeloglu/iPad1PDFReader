@@ -1,129 +1,169 @@
 # TASKS.md
 
-## Priority 0 — Text Reader v1 current branch
+## Priority 0 — current physical validation
 Current branch: `feature/text-reader-v1`.
 
-Implementation target:
-- [x] Keep `PDFReaderViewController` separate from text viewing.
-- [x] Add `TextReaderViewController` using legacy `UITextView`.
-- [x] Support `.txt`, `.md`, `.log`, `.csv`, `.json`, `.xml`, `.sql`, `.py`, `.sh`, `.ini`, `.conf` as plain text.
-- [x] UTF-8 read-only viewing.
-- [x] A- / A+ font controls.
-- [x] Word Wrap toggle.
-- [x] Find / Next / Previous search.
-- [x] Show file name and full path in Info.
-- [x] Check file size before loading.
-- [x] Hard full-load limit of 2 MiB for iPad 1 safety.
-- [x] Keep `ipad1pdf://open?path=...` and route by extension.
-- [x] Open iPad1Files paths in-place with no duplicate copy.
-- [x] Unsupported extension alert.
-- [x] Clean-build with legacy Theos/iPhoneOS6.1 SDK.
-- [x] Install latest combined branch on physical iPad 1.
-- [ ] Run remaining Text Reader tests in `TESTING.md`.
-- [ ] Complete iPad1Files picker callback validation.
+Current source already contains PDF/Text Reader work that still needs physical iPad 1 validation before being called complete.
 
-First version deliberately excludes:
-- [x] no editing/save;
-- [x] no syntax highlighting;
-- [x] no Markdown renderer;
-- [x] no JSON/XML parser;
-- [x] no background/full-document index;
-- [x] no OCR/AI/ML.
-
-## Priority 1 — current PDF reader UX, iPad 1 safe
-Implemented on current branch:
-- [x] bounded reading-location back/forward, cap 20;
-- [x] Day / Sepia / Night themes;
-- [x] Page Lock;
-- [x] highlight recolor/delete;
-- [x] scanned/image PDF region-highlight fallback without OCR;
-- [x] low-memory Fit Page control;
-- [x] low-memory Fit Width control;
-- [x] rename ambiguous `Geri/İleri` to `Konum Geri/Konum İleri`;
-- [x] unified bounded `Gezinti Merkezi` with `İçindekiler / Yer İmleri / Notlar / İşaretler`;
-- [x] hard-bound outline parsing to 80 entries;
-- [x] direct current-page hit-test for note/highlight/underline/strikeout, cap 80 annotations;
-- [x] direct note tap -> view/edit/delete flow;
-- [x] direct text-mark tap -> recolor/delete flow;
-- [x] page-local Underline using existing active-page text geometry;
-- [x] page-local Strikeout using existing active-page text geometry;
-- [x] flattened export support for Underline / Strikeout;
-- [x] scanned/image pages reject Underline / Strikeout without OCR.
-
-Physical iPad 1 PASS already observed on earlier package:
-- [x] PDF open/render;
-- [x] reading-location back/forward;
-- [x] Day / Sepia / Night;
-- [x] Page Lock;
-- [x] highlight create/edit/recolor/delete;
-- [x] region-highlight fallback.
-
-Needs physical validation after latest build:
+Validate:
 - [ ] Fit Page;
 - [ ] Fit Width;
-- [ ] no-history alerts for Konum Geri / Konum İleri;
-- [ ] edge-tap previous/next page behavior and gesture conflicts;
-- [ ] Gezinti Merkezi sections render correctly;
-- [ ] direct tap Highlight -> recolor/delete;
-- [ ] direct tap Note -> view/edit/delete;
+- [ ] `Konum Geri / Konum İleri` no-history alerts;
+- [ ] edge-tap navigation and gesture conflicts;
+- [ ] `Gezinti Merkezi` sections;
+- [ ] direct Highlight tap -> recolor/delete;
+- [ ] direct Note tap -> view/edit/delete;
 - [ ] Underline create/redraw/recolor/delete;
 - [ ] Strikeout create/redraw/recolor/delete;
-- [ ] Underline / Strikeout persist after page change and reopen;
-- [ ] Underline / Strikeout flattened export;
-- [ ] direct annotation tap does not break scroll/zoom/edge navigation;
-- [ ] image/scanned PDF safely rejects Underline / Strikeout without OCR.
+- [ ] Underline / Strikeout persistence after page change/reopen;
+- [ ] flattened export of Highlight / Underline / Strikeout;
+- [ ] scanned/image PDF safely rejects Underline / Strikeout without OCR;
+- [ ] remaining Text Reader tests from `TESTING.md`;
+- [ ] iPad1Files picker callback validation.
 
-## Priority 2 — next PDF-only improvements after current build is stable
-- [ ] Named PDF bookmarks with short optional title, bounded/backward-compatible persistence.
-- [ ] Simple line / rectangle / ellipse shapes only if physical gesture testing remains clean.
+## Priority 1 — Markdown Reader v2
+Goal: keep `.md` readable on iPad 1 even when formatting cannot be rendered.
+
+Base behavior:
+- [x] `.md` currently opens as UTF-8 plain text in `TextReaderViewController`;
+- [x] read-only;
+- [x] A-/A+;
+- [x] Word Wrap;
+- [x] Find / Next / Previous;
+- [x] 2 MiB hard source-file limit.
+
+Planned formatted reading mode:
+- [ ] add optional `Markdown Görünümü` toggle;
+- [ ] headings `#`..`######`;
+- [ ] bold;
+- [ ] italic;
+- [ ] bullet lists;
+- [ ] numbered lists;
+- [ ] blockquote;
+- [ ] inline code;
+- [ ] fenced code blocks;
+- [ ] horizontal rule;
+- [ ] basic links as readable text/URL;
+- [ ] retain plain-text fallback;
+- [ ] no JavaScript;
+- [ ] no remote asset loading;
+- [ ] no full CommonMark/GFM requirement;
+- [ ] no background/document-wide index;
+- [ ] physical test with small/medium Markdown files;
+- [ ] verify memory remains bounded after repeated mode switching.
+
+Deferred until profiling:
+- [ ] Markdown tables;
+- [ ] embedded HTML;
+- [ ] local/remote image rendering.
+
+## Priority 2 — DOCX Reader v1
+Goal: readable Word document content, not desktop Word fidelity.
+
+Architecture:
+- [ ] add separate `DocumentReaderViewController`;
+- [ ] add DOCX-specific read-only package/XML parser (`DOCXReader` or equivalent);
+- [ ] keep `.docx` routing under existing `ipad1pdf://open?path=...` receiver;
+- [ ] open shared iPad1Files `.docx` in-place with no duplicate copy;
+- [ ] add `.docx` to iPad1Files normal extension routing toward iPad1PDFReader when that app-side registry work is available.
+
+V1 content support:
+- [ ] extract `word/document.xml`;
+- [ ] paragraphs;
+- [ ] line breaks;
+- [ ] basic bold/italic runs;
+- [ ] headings where safely derivable;
+- [ ] simple bullets/numbering;
+- [ ] simple tables as lightweight rows/text;
+- [ ] Find / Next / Previous;
+- [ ] A- / A+;
+- [ ] file name/path/size Info;
+- [ ] read-only only;
+- [ ] graceful error for malformed/unsupported packages.
+
+DOCX safety limits to implement and profile:
+- [ ] target compressed DOCX max **8 MiB** initially;
+- [ ] target primary XML/text working set max **4 MiB** initially;
+- [ ] parse only required DOCX parts;
+- [ ] do not persistently extract whole package;
+- [ ] one embedded image decoded at a time if images are later enabled;
+- [ ] oversized embedded media is skipped/rejected safely;
+- [ ] clear disposable XML/image state on memory warning;
+- [ ] no macros;
+- [ ] no remote relationships/network fetch;
+- [ ] no Office SDK;
+- [ ] no LibreOffice engine;
+- [ ] no full desktop pagination/layout engine;
+- [ ] no OCR/AI/ML.
+
+Embedded images:
+- [ ] deferred until text-first DOCX reading passes physical device testing;
+- [ ] if enabled later, impose strict pixel/dimension/downscale limits.
+
+## Priority 3 — legacy `.doc` feasibility
+Classic binary `.doc` is not the same format as `.docx`.
+
+- [ ] research/implement only a compact text-extraction feasibility spike;
+- [ ] measure dependency size and RAM on physical iPad 1;
+- [ ] reject any approach requiring a heavy office suite/engine;
+- [ ] if safe extraction is not practical, keep `.doc` unsupported rather than compromising stability.
+
+Do not claim `.doc` support until it builds, runs and is physically validated.
+
+## Priority 4 — next PDF-only improvements after current build is stable
+- [ ] Named PDF bookmarks with short optional title, bounded/backward-compatible persistence;
+- [ ] Simple line / rectangle / ellipse shapes only if physical gesture testing remains clean;
 - [ ] Selected-text Copy only if it safely reuses page-local selection state.
 
-## Priority 3 — candidate PDF-only improvements requiring profiling
-- [ ] Manual margin crop / visible-area crop. Do not implement automatic whole-document crop analysis.
-- [ ] PDF forms only after a separate feasibility review; no heavy replacement PDF engine.
-
-## Priority 4 — memory/stability validation
-- [ ] 100+ page thumbnail scrolling; cache remains max 8.
-- [ ] PDF search results remain max 40.
-- [ ] Search/cancel repeatedly; no progressive growth.
-- [ ] Reflow remains page-local.
-- [ ] Gezinti Merkezi annotation summary remains bounded to 80 items, max 40 per kind.
-- [ ] Outline parsing remains bounded to 80 entries.
-- [ ] Open/close several large PDFs sequentially.
-- [ ] Zoom/page-change for 10 minutes.
-- [ ] Rotate while zoomed repeatedly.
-- [ ] Trigger memory pressure and verify temporary selection data is dropped.
-- [ ] Test 50+, 200+ page PDFs.
-- [ ] Repeatedly open/close supported text files under 2 MiB without progressive growth.
-- [ ] Verify >2 MiB text files are rejected before `UITextView` load.
+## Priority 5 — memory/stability validation
+- [ ] 100+ page thumbnail scrolling; cache remains max 8;
+- [ ] PDF search results remain max 40;
+- [ ] repeated PDF search/cancel shows no progressive growth;
+- [ ] Reflow remains page-local;
+- [ ] Gezinti Merkezi annotation summary remains bounded to 80 items, max 40 per kind;
+- [ ] outline parsing remains bounded to 80 entries;
+- [ ] open/close several large PDFs sequentially;
+- [ ] rotate/zoom/page-change stress test;
+- [ ] repeated open/close text and Markdown files under 2 MiB;
+- [ ] repeated Markdown mode toggle when implemented;
+- [ ] repeated DOCX open/close when implemented;
+- [ ] DOCX malformed package failure path;
+- [ ] DOCX large-file rejection before expensive parse;
+- [ ] memory warning clears disposable DOCX parser/image state.
 
 ## Companion-app boundary — mandatory ownership gate
 ### Leave to iPad1Files
-- [x] Do not implement general copy/move/rename/delete browser features in PDFReader.
-- [x] Do not duplicate favorites/file organization/Open With registry.
-- [x] Normal suite file-type routing belongs in iPad1Files.
-- [ ] iPad1Files should implement the lightweight picker receiver for `ipad1files://pick?callback=ipad1pdf` and return the same physical path without copying.
+- [x] general copy/move/rename/delete browser features;
+- [x] file favorites/file organization/Open With registry;
+- [x] normal suite file-type routing;
+- [x] general ZIP browsing/extracting/creating;
+- [ ] picker receiver for `ipad1files://pick?callback=ipad1pdf`;
+- [ ] eventually route `.docx` to iPad1PDFReader after DOCX reader is physically proven.
+
+Important distinction: DOCX is ZIP-based, but read-only decompression used internally and only to parse a DOCX package is allowed in iPad1PDFReader. It must not become a general archive feature.
 
 ### Leave to iPad1FTPDownloader / iPad1Downloader
-- [x] Do not expand HTTP/HTTPS/FTP/WebDAV browse/download/upload/queue/resume in PDFReader.
-- [x] Existing PDFReader network code remains compatibility-only pending handoff retirement.
+- [x] HTTP/HTTPS/FTP/WebDAV browse/download/upload/queue/resume;
+- [x] do not expand legacy PDFReader transfer code.
 
 ### Leave to iPad1Player
-- [x] Do not decode/play video or audio inside PDFReader.
-- [ ] A PDF link that resolves to an already-local media file may later hand off to `ipad1player://open?path=...`; no media engine belongs here.
+- [x] video/audio/subtitle playback;
+- [ ] local media handoff only when a PDF-specific interaction resolves to a media file.
 
 ## Explicitly out of scope on-device
-- [x] No OCR engine.
-- [x] No AI/ML inference.
-- [x] No whole-document high-resolution bitmap cache.
-- [x] No persistent full-document PDF text index.
-- [x] No large background indexing service.
-- [x] No modern cloud-provider SDKs.
-- [x] No SMB/SFTP library merely for competitor parity.
-- [x] No heavy replacement PDF engine without measured physical-device proof.
-- [x] No general file manager.
-- [x] No download manager.
-- [x] No media player.
+- [x] OCR engine;
+- [x] AI/ML inference;
+- [x] whole-document high-resolution bitmap cache;
+- [x] persistent full-document PDF text index;
+- [x] large background indexing service;
+- [x] modern cloud SDKs;
+- [x] heavy replacement PDF engine;
+- [x] embedded Microsoft Office/LibreOffice engine;
+- [x] full Word-compatible editing/save;
+- [x] full desktop Word pagination fidelity;
+- [x] general file manager;
+- [x] download manager;
+- [x] media player.
 
 ## Definition of done
 A feature is complete only when:
@@ -131,4 +171,5 @@ A feature is complete only when:
 - it runs on physical iPad 1;
 - memory use is bounded;
 - relevant `TESTING.md` checks pass;
-- docs are updated.
+- docs are updated;
+- no feature owned by another suite app has been duplicated as a general-purpose subsystem.
