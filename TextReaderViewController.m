@@ -29,6 +29,8 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
         _filePath=[path copy];
         _fontSize=IPAD1_TEXT_DEFAULT_FONT;
         _wrapEnabled=YES;
+        _isMarkdown=[[[path pathExtension] lowercaseString] isEqualToString:@"md"];
+        _markdownReadingMode=_isMarkdown;
         _lastMatch=NSMakeRange(NSNotFound,0);
     }
     return self;
@@ -61,7 +63,13 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
     UIBarButtonItem *wrap=[[[UIBarButtonItem alloc] initWithTitle:@"Wrap" style:UIBarButtonItemStylePlain target:self action:@selector(toggleWrap)] autorelease];
     UIBarButtonItem *info=[[[UIBarButtonItem alloc] initWithTitle:@"Bilgi" style:UIBarButtonItemStylePlain target:self action:@selector(showInfo)] autorelease];
     UIBarButtonItem *flex=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil] autorelease];
-    _toolbar.items=[NSArray arrayWithObjects:minus,flex,plus,flex,wrap,flex,info,nil];
+
+    if(_isMarkdown) {
+        _markdownButton=[[UIBarButtonItem alloc] initWithTitle:@"Kaynak" style:UIBarButtonItemStylePlain target:self action:@selector(toggleMarkdownMode)];
+        _toolbar.items=[NSArray arrayWithObjects:minus,flex,plus,flex,wrap,flex,_markdownButton,flex,info,nil];
+    } else {
+        _toolbar.items=[NSArray arrayWithObjects:minus,flex,plus,flex,wrap,flex,info,nil];
+    }
     [self.view addSubview:_toolbar];
 
     [self loadTextFile];
@@ -115,6 +123,154 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
     }
 }
 
+- (NSString *)markdownInlineReadingText:(NSString *)line {
+    if(!line) return @"";
+    NSMutableString *out=[NSMutableString stringWithCapacity:[line length]];
+    NSUInteger length=[line length];
+    NSUInteger i=0;
+    while(i<length) {
+        unichar c=[line characterAtIndex:i];
+
+        if(c=='[') {
+            NSRange close=[line rangeOfString:@"]" options:0 range:NSMakeRange(i+1,length-i-1)];
+            if(close.location!=NSNotFound && NSMaxRange(close)<length && [line characterAtIndex:NSMaxRange(close)]=='(') {
+                NSUInteger urlStart=NSMaxRange(close)+1;
+                NSRange end=[line rangeOfString:@")" options:0 range:NSMakeRange(urlStart,length-urlStart)];
+                if(end.location!=NSNotFound) {
+                    NSString *label=[line substringWithRange:NSMakeRange(i+1,close.location-i-1)];
+                    NSString *url=[line substringWithRange:NSMakeRange(urlStart,end.location-urlStart)];
+                    [out appendString:label];
+                    if([url length]>0) [out appendFormat:@" <%@>",url];
+                    i=NSMaxRange(end);
+                    continue;
+                }
+            }
+        }
+
+        if(c=='!' && i+1<length && [line characterAtIndex:i+1]=='[') {
+            NSRange close=[line rangeOfString:@"]" options:0 range:NSMakeRange(i+2,length-i-2)];
+            if(close.location!=NSNotFound) {
+                NSString *alt=[line substringWithRange:NSMakeRange(i+2,close.location-i-2)];
+                [out appendFormat:@"[Görsel%@%@]",[alt length]?@": ":@"",alt];
+                NSUInteger next=NSMaxRange(close);
+                if(next<length && [line characterAtIndex:next]=='(') {
+                    NSRange end=[line rangeOfString:@")" options:0 range:NSMakeRange(next+1,length-next-1)];
+                    if(end.location!=NSNotFound) next=NSMaxRange(end);
+                }
+                i=next;
+                continue;
+            }
+        }
+
+        if(c=='*'||c=='_'||c=='`') {
+            i++;
+            continue;
+        }
+
+        if(c=='\\' && i+1<length) {
+            [out appendFormat:@"%C",[line characterAtIndex:i+1]];
+            i+=2;
+            continue;
+        }
+
+        [out appendFormat:@"%C",c];
+        i++;
+    }
+    return out;
+}
+
+- (BOOL)isMarkdownRuleLine:(NSString *)trimmed {
+    if([trimmed length]<3) return NO;
+    unichar first=[trimmed characterAtIndex:0];
+    if(first!='-'&&first!='*'&&first!='_') return NO;
+    for(NSUInteger i=1;i<[trimmed length];i++) {
+        unichar c=[trimmed characterAtIndex:i];
+        if(c!=first && c!=' ' && c!='\t') return NO;
+    }
+    return YES;
+}
+
+- (NSString *)markdownReadingTextFromSource:(NSString *)source {
+    if(!source) return @"";
+    NSArray *lines=[source componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    NSMutableString *out=[NSMutableString stringWithCapacity:MIN((NSUInteger)262144,[source length])];
+    BOOL inCode=NO;
+
+    for(NSUInteger n=0;n<[lines count];n++) {
+        NSAutoreleasePool *pool=[[NSAutoreleasePool alloc] init];
+        NSString *line=[lines objectAtIndex:n];
+        NSString *trim=[line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+
+        if([trim hasPrefix:@"```"]||[trim hasPrefix:@"~~~"]) {
+            inCode=!inCode;
+            if([out length]>0 && ![out hasSuffix:@"\n"]) [out appendString:@"\n"];
+            [out appendString:inCode?@"Kod:\n":@"\n"];
+            [pool drain];
+            continue;
+        }
+
+        if(inCode) {
+            [out appendFormat:@"    %@\n",line];
+            [pool drain];
+            continue;
+        }
+
+        if([self isMarkdownRuleLine:trim]) {
+            [out appendString:@"────────────────────────\n"];
+            [pool drain];
+            continue;
+        }
+
+        NSString *working=line;
+        NSUInteger hashCount=0;
+        while(hashCount<[working length] && [working characterAtIndex:hashCount]=='#') hashCount++;
+        if(hashCount>0 && hashCount<=6 && hashCount<[working length] && [working characterAtIndex:hashCount]==' ') {
+            working=[working substringFromIndex:hashCount+1];
+            working=[self markdownInlineReadingText:working];
+            if([out length]>0 && ![out hasSuffix:@"\n\n"]) [out appendString:@"\n"];
+            [out appendFormat:@"%@%@\n\n",hashCount<=2?@"◆ ":@"▸ ",working];
+            [pool drain];
+            continue;
+        }
+
+        NSString *left=[working stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        if([left hasPrefix:@"> "]||[left isEqualToString:@">"]) {
+            NSString *body=[left length]>1?[left substringFromIndex:1]:@"";
+            body=[body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+            [out appendFormat:@"│ %@\n",[self markdownInlineReadingText:body]];
+            [pool drain];
+            continue;
+        }
+
+        if([left hasPrefix:@"- "]||[left hasPrefix:@"* "]||[left hasPrefix:@"+ "]) {
+            NSString *body=[left substringFromIndex:2];
+            [out appendFormat:@"• %@\n",[self markdownInlineReadingText:body]];
+            [pool drain];
+            continue;
+        }
+
+        [out appendString:[self markdownInlineReadingText:working]];
+        if(n+1<[lines count]) [out appendString:@"\n"];
+        [pool drain];
+    }
+    return out;
+}
+
+- (void)applyCurrentTextModePreservingOffset:(BOOL)preserve {
+    if(_isMarkdown && _markdownReadingMode) _textView.text=[self markdownReadingTextFromSource:_sourceText];
+    else _textView.text=_sourceText?_sourceText:@"";
+    _lastMatch=NSMakeRange(NSNotFound,0);
+    [self layoutTextViewPreservingOffset:preserve];
+    if(_markdownButton) _markdownButton.title=_markdownReadingMode?@"Kaynak":@"MD Oku";
+}
+
+- (void)toggleMarkdownMode {
+    if(!_isMarkdown) return;
+    _markdownReadingMode=!_markdownReadingMode;
+    [self applyCurrentTextModePreservingOffset:NO];
+    [self showSimpleAlert:@"Markdown" message:_markdownReadingMode?@"Okuma görünümü açık.":@"Kaynak görünümü açık."];
+}
+
 - (void)loadTextFile {
     if(!_filePath||![[NSFileManager defaultManager] fileExistsAtPath:_filePath]) {
         [self showSimpleAlert:@"Dosya açılamadı" message:@"Dosya bulunamadı."];
@@ -123,7 +279,7 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
     NSDictionary *attributes=[[NSFileManager defaultManager] attributesOfItemAtPath:_filePath error:nil];
     _fileSize=[[attributes objectForKey:NSFileSize] unsignedLongLongValue];
     if(_fileSize>IPAD1_TEXT_MAX_BYTES) {
-        NSString *message=[NSString stringWithFormat:@"Dosya %.2f MB. iPad 1 bellek güvenliği için Text Reader ilk sürümünde tam yükleme sınırı %.0f MB. Dosya belleğe yüklenmedi.",(double)_fileSize/1048576.0,(double)IPAD1_TEXT_MAX_BYTES/1048576.0];
+        NSString *message=[NSString stringWithFormat:@"Dosya %.2f MB. iPad 1 bellek güvenliği için Text Reader tam yükleme sınırı %.0f MB. Dosya belleğe yüklenmedi.",(double)_fileSize/1048576.0,(double)IPAD1_TEXT_MAX_BYTES/1048576.0];
         _textView.text=@"";
         [self showSimpleAlert:@"Dosya çok büyük" message:message];
         return;
@@ -145,9 +301,10 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
         [text release];
         text=withoutBOM;
     }
-    _textView.text=text;
+    [_sourceText release];
+    _sourceText=[text copy];
     [text release];
-    [self layoutTextViewPreservingOffset:NO];
+    [self applyCurrentTextModePreservingOffset:NO];
 }
 
 - (void)showSimpleAlert:(NSString *)title message:(NSString *)message {
@@ -175,7 +332,8 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
 
 - (void)showInfo {
     NSString *sizeText=(_fileSize>=1048576ULL)?[NSString stringWithFormat:@"%.2f MB",(double)_fileSize/1048576.0]:[NSString stringWithFormat:@"%.1f KB",(double)_fileSize/1024.0];
-    NSString *message=[NSString stringWithFormat:@"Dosya: %@\nBoyut: %@\nKodlama: UTF-8\nMod: Salt okunur\nWrap: %@\n\nTam yol:\n%@",[_filePath lastPathComponent],sizeText,_wrapEnabled?@"Açık":@"Kapalı",_filePath];
+    NSString *mode=_isMarkdown?(_markdownReadingMode?@"Markdown okuma":@"Markdown kaynak"):@"Düz metin";
+    NSString *message=[NSString stringWithFormat:@"Dosya: %@\nBoyut: %@\nKodlama: UTF-8\nMod: %@ / Salt okunur\nWrap: %@\n\nTam yol:\n%@",[_filePath lastPathComponent],sizeText,mode,_wrapEnabled?@"Açık":@"Kapalı",_filePath];
     [self showSimpleAlert:@"Text Reader Bilgisi" message:message];
 }
 
@@ -254,6 +412,7 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
     [super didReceiveMemoryWarning];
     if(!self.view.window) {
         _textView.text=@"";
+        [_sourceText release]; _sourceText=nil;
         [_searchTerm release]; _searchTerm=nil;
         _lastMatch=NSMakeRange(NSNotFound,0);
     }
@@ -261,9 +420,11 @@ static const CGFloat IPAD1_TEXT_MAX_NOWRAP_WIDTH = 8192.0f;
 
 - (void)dealloc {
     [_filePath release];
+    [_sourceText release];
     [_textView release];
     [_horizontalScrollView release];
     [_toolbar release];
+    [_markdownButton release];
     [_searchTerm release];
     [super dealloc];
 }
