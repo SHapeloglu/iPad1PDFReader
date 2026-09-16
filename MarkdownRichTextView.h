@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <CoreText/CoreText.h>
 
 @interface MarkdownRichTextView : UIView {
     NSString *_source;
