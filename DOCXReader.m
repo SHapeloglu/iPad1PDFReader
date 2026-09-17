@@ -183,12 +183,21 @@ static NSData *IP1DOCXDocumentXMLAtPath(NSString *path, NSError **error) {
     NSString *name=[elementName hasPrefix:@"w:"]?[elementName substringFromIndex:2]:elementName;
     if([name isEqualToString:@"t"]) { _inText=NO; [self appendText:_textBuffer]; [_textBuffer setString:@""]; }
     else if([name isEqualToString:@"p"]) {
-        if([_workingText length] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"\n"];
-        if(_headingLevel>0 && !_inTable) [_workingText appendString:@"\n"];
+        if(_inTable && _inCell) {
+            if(_paragraphHasText && [_workingText length] && ![_workingText hasSuffix:@" "] && ![_workingText hasSuffix:@"\n"] && ![_workingText hasSuffix:@"  │  "]) {
+                [_workingText appendString:@" "];
+            }
+        } else {
+            if([_workingText length] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"\n"];
+            if(_headingLevel>0) [_workingText appendString:@"\n"];
+        }
         _paragraphHasText=NO; _paragraphIsList=NO; _headingLevel=0;
     }
     else if([name isEqualToString:@"tc"]) {
-        if(_inTable && [_workingText length] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"  │  "];
+        if(_inTable && [_workingText length]) {
+            while([_workingText hasSuffix:@" "]) [_workingText deleteCharactersInRange:NSMakeRange([_workingText length]-1,1)];
+            if(![_workingText hasSuffix:@"\n"] && ![_workingText hasSuffix:@"  │  "]) [_workingText appendString:@"  │  "];
+        }
         _inCell=NO;
     }
     else if([name isEqualToString:@"tr"]) {
