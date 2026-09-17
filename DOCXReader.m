@@ -170,7 +170,7 @@ static NSData *IP1DOCXDocumentXMLAtPath(NSString *path, NSError **error) {
     else if([name isEqualToString:@"tab"]) [self appendText:@"\t"];
     else if([name isEqualToString:@"br"]) [self appendText:@"\n"];
     else if([name isEqualToString:@"tbl"]) _inTable=YES;
-    else if([name isEqualToString:@"tc"]) { _inCell=YES; }
+    else if([name isEqualToString:@"tc"]) { _inCell=YES; _cellStartLength=[_workingText length]; }
 }
 
 - (void)parser:(NSXMLParser *)parser foundCharacters:(NSString *)string {
@@ -194,9 +194,13 @@ static NSData *IP1DOCXDocumentXMLAtPath(NSString *path, NSError **error) {
         _paragraphHasText=NO; _paragraphIsList=NO; _headingLevel=0;
     }
     else if([name isEqualToString:@"tc"]) {
-        if(_inTable && [_workingText length]) {
-            while([_workingText hasSuffix:@" "]) [_workingText deleteCharactersInRange:NSMakeRange([_workingText length]-1,1)];
-            if(![_workingText hasSuffix:@"\n"] && ![_workingText hasSuffix:@"  │  "]) [_workingText appendString:@"  │  "];
+        if(_inTable && [_workingText length]>_cellStartLength) {
+            while([_workingText length]>_cellStartLength && [_workingText hasSuffix:@" "]) {
+                [_workingText deleteCharactersInRange:NSMakeRange([_workingText length]-1,1)];
+            }
+            if([_workingText length]>_cellStartLength && ![_workingText hasSuffix:@"\n"] && ![_workingText hasSuffix:@"  │  "]) {
+                [_workingText appendString:@"  │  "];
+            }
         }
         _inCell=NO;
     }
