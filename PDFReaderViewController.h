@@ -8,7 +8,9 @@
 @interface PDFReaderViewController : UIViewController <UIScrollViewDelegate,UIActionSheetDelegate,ThumbnailViewControllerDelegate,SearchViewControllerDelegate,OutlineViewControllerDelegate,DocumentNavigatorViewControllerDelegate,UIAlertViewDelegate> {
     NSString *_pdfPath; CGPDFDocumentRef _document; NSUInteger _currentPage,_pageCount;
     UIScrollView *_scrollView; PDFPageView *_pageView; AnnotationOverlayView *_overlay;
-    UIToolbar *_toolbar; UILabel *_pageLabel; UIBarButtonItem *_previousButton,*_nextButton,*_bookmarkButton;
+    UIToolbar *_toolbar; UILabel *_pageLabel; UIBarButtonItem *_previousButton,*_nextButton,*_bookmarkButton,*_referenceButton;
+    UIPopoverController *_referencePopover;
+    NSUInteger _referencePage;
     CGFloat _sessionZoomScale;
     NSArray *_bookmarkSheetPages;
     NSArray *_noteSheetIndexes;
