@@ -3,10 +3,12 @@
 @class PDFPageView;
 
 @interface ReferencePageViewController : UIViewController {
+    NSString *_pdfPath;
+    CGPDFDocumentRef _document;
     CGPDFPageRef _page;
     NSUInteger _pageNumber;
     PDFPageView *_pageView;
     UILabel *_titleLabel;
 }
-- (id)initWithPDFPage:(CGPDFPageRef)page pageNumber:(NSUInteger)pageNumber;
+- (id)initWithPDFPath:(NSString *)path pageNumber:(NSUInteger)pageNumber;
 @end
