@@ -151,11 +151,18 @@ static NSData *IP1DOCXDocumentXMLAtPath(NSString *path, NSError **error) {
     else if([name isEqualToString:@"pStyle"]) {
         NSString *v=[attributeDict objectForKey:@"w:val"]?:[attributeDict objectForKey:@"val"];
         NSString *lower=[v lowercaseString];
-        if([lower hasPrefix:@"heading"] || [lower hasPrefix:@"başlık"]) {
-            NSInteger level=1;
+        BOOL heading=([lower rangeOfString:@"heading"].location!=NSNotFound ||
+                      [lower rangeOfString:@"başlık"].location!=NSNotFound ||
+                      [lower rangeOfString:@"baslik"].location!=NSNotFound ||
+                      [lower rangeOfString:@"balik"].location!=NSNotFound);
+        BOOL title=([lower isEqualToString:@"title"] || [lower hasSuffix:@"title"]);
+        BOOL subtitle=([lower isEqualToString:@"subtitle"] || [lower rangeOfString:@"subtitle"].location!=NSNotFound);
+        if(heading || title || subtitle) {
+            NSInteger level=title?1:(subtitle?2:1);
             NSScanner *scanner=[NSScanner scannerWithString:lower];
             [scanner scanUpToCharactersFromSet:[NSCharacterSet decimalDigitCharacterSet] intoString:NULL];
-            [scanner scanInteger:&level];
+            NSInteger scanned=0;
+            if([scanner scanInteger:&scanned] && scanned>0) level=scanned;
             _headingLevel=(NSUInteger)MAX(1,MIN(6,level));
         }
     }
@@ -163,7 +170,7 @@ static NSData *IP1DOCXDocumentXMLAtPath(NSString *path, NSError **error) {
     else if([name isEqualToString:@"tab"]) [self appendText:@"\t"];
     else if([name isEqualToString:@"br"]) [self appendText:@"\n"];
     else if([name isEqualToString:@"tbl"]) _inTable=YES;
-    else if([name isEqualToString:@"tc"]) { if(_inTable && _paragraphHasText) [_workingText appendString:@"\t"]; _inCell=YES; }
+    else if([name isEqualToString:@"tc"]) { _inCell=YES; }
 }
 
 - (void)parser:(NSXMLParser *)parser foundCharacters:(NSString *)string {
@@ -177,12 +184,21 @@ static NSData *IP1DOCXDocumentXMLAtPath(NSString *path, NSError **error) {
     if([name isEqualToString:@"t"]) { _inText=NO; [self appendText:_textBuffer]; [_textBuffer setString:@""]; }
     else if([name isEqualToString:@"p"]) {
         if([_workingText length] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"\n"];
-        if(_headingLevel>0) [_workingText appendString:@"\n"];
+        if(_headingLevel>0 && !_inTable) [_workingText appendString:@"\n"];
         _paragraphHasText=NO; _paragraphIsList=NO; _headingLevel=0;
     }
-    else if([name isEqualToString:@"tc"]) { if(_inTable && [_workingText length] && ![_workingText hasSuffix:@"\t"] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"\t"]; _inCell=NO; }
-    else if([name isEqualToString:@"tr"]) { if(_inTable && [_workingText length] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"\n"]; }
-    else if([name isEqualToString:@"tbl"]) { _inTable=NO; if([_workingText length] && ![_workingText hasSuffix:@"\n\n"]) [_workingText appendString:@"\n"]; }
+    else if([name isEqualToString:@"tc"]) {
+        if(_inTable && [_workingText length] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"  │  "];
+        _inCell=NO;
+    }
+    else if([name isEqualToString:@"tr"]) {
+        if(_inTable && [_workingText hasSuffix:@"  │  "]) [_workingText deleteCharactersInRange:NSMakeRange([_workingText length]-5,5)];
+        if(_inTable && [_workingText length] && ![_workingText hasSuffix:@"\n"]) [_workingText appendString:@"\n"];
+    }
+    else if([name isEqualToString:@"tbl"]) {
+        _inTable=NO;
+        if([_workingText length] && ![_workingText hasSuffix:@"\n\n"]) [_workingText appendString:@"\n"];
+    }
 }
 
 - (void)dealloc {
