@@ -13,6 +13,7 @@ typedef struct {
     CGFloat leading;
     CGFloat horizontalScale;
     CGFloat rise;
+    NSInteger textRenderingMode;
 } PDFTextState;
 
 static void AppendPDFString(CGPDFStringRef pdfString, PDFTextState *state) {
@@ -41,6 +42,17 @@ static void AddTextRectForString(CGPDFStringRef pdfString, PDFTextState *state) 
     CGFloat width=ApproximateStringWidth(pdfString,state);
     CGFloat height=MAX(4.0f,state->fontSize);
     if(width<=0.0f) return;
+
+    /*
+     PDF text rendering mode 3 is invisible text and mode 7 is clip-only.
+     Scanned/OCR PDFs commonly keep an invisible text layer behind the page
+     image. Search may still read that text, but it must not be treated as
+     visible geometry for highlight/underline/strikeout selection.
+    */
+    if(state->textRenderingMode==3 || state->textRenderingMode==7) {
+        state->textMatrix=CGAffineTransformTranslate(state->textMatrix,width,0.0f);
+        return;
+    }
 
     CGRect local=CGRectMake(0.0f,state->rise,width,height);
     CGRect pdfRect=CGRectApplyAffineTransform(local,state->textMatrix);
@@ -119,6 +131,11 @@ static void Op_Ts(CGPDFScannerRef scanner, void *info) {
     PDFTextState *state=(PDFTextState *)info; CGPDFReal v=0;
     if(CGPDFScannerPopNumber(scanner,&v)) state->rise=v;
 }
+static void Op_Tr(CGPDFScannerRef scanner, void *info) {
+    PDFTextState *state=(PDFTextState *)info;
+    CGPDFInteger mode=0;
+    if(CGPDFScannerPopInteger(scanner,&mode)) state->textRenderingMode=(NSInteger)mode;
+}
 static void Op_Tj(CGPDFScannerRef scanner, void *info) {
     PDFTextState *state=(PDFTextState *)info;
     CGPDFStringRef s=NULL;
@@ -147,6 +164,7 @@ static void ScanPage(CGPDFPageRef page, PDFTextState *state) {
     CGPDFOperatorTableSetCallback(table,"TL",Op_TL);
     CGPDFOperatorTableSetCallback(table,"Tz",Op_Tz);
     CGPDFOperatorTableSetCallback(table,"Ts",Op_Ts);
+    CGPDFOperatorTableSetCallback(table,"Tr",Op_Tr);
     CGPDFOperatorTableSetCallback(table,"Tj",Op_Tj);
     CGPDFOperatorTableSetCallback(table,"TJ",Op_TJ);
     CGPDFContentStreamRef stream=CGPDFContentStreamCreateWithPage(page);
@@ -165,7 +183,7 @@ static void ScanPage(CGPDFPageRef page, PDFTextState *state) {
     state.text=out; state.rects=nil; state.maxRects=0; state.page=page;
     state.mediaBox=CGPDFPageGetBoxRect(page,kCGPDFMediaBox);
     state.textMatrix=CGAffineTransformIdentity; state.lineMatrix=CGAffineTransformIdentity;
-    state.fontSize=12.0f; state.leading=12.0f; state.horizontalScale=1.0f; state.rise=0.0f;
+    state.fontSize=12.0f; state.leading=12.0f; state.horizontalScale=1.0f; state.rise=0.0f; state.textRenderingMode=0;
     ScanPage(page,&state);
     return out;
 }
@@ -178,7 +196,7 @@ static void ScanPage(CGPDFPageRef page, PDFTextState *state) {
     state.text=[NSMutableString string]; state.rects=rects; state.maxRects=hardLimit; state.page=page;
     state.mediaBox=CGPDFPageGetBoxRect(page,kCGPDFMediaBox);
     state.textMatrix=CGAffineTransformIdentity; state.lineMatrix=CGAffineTransformIdentity;
-    state.fontSize=12.0f; state.leading=12.0f; state.horizontalScale=1.0f; state.rise=0.0f;
+    state.fontSize=12.0f; state.leading=12.0f; state.horizontalScale=1.0f; state.rise=0.0f; state.textRenderingMode=0;
     ScanPage(page,&state);
     return rects;
 }
