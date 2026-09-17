@@ -14,6 +14,7 @@
     BOOL _inTable;
     BOOL _inCell;
     NSUInteger _headingLevel;
+    NSUInteger _cellStartLength;
 }
 @property(nonatomic,readonly) NSString *plainText;
 @property(nonatomic,readonly) NSArray *styles;
