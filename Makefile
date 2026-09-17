@@ -10,6 +10,8 @@ iPad1PDFReader_FILES = \
 	AppDelegate.m \
 	PDFLibraryViewController.m \
 	PDFReaderViewController.m \
+	PDFReferencePageFeature.m \
+	ReferencePageViewController.m \
 	TextReaderViewController.m \
 	MarkdownReaderViewController.m \
 	MarkdownRichTextView.m \
