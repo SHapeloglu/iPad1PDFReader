@@ -4,10 +4,14 @@
 
 @implementation ReferencePageViewController
 
-- (id)initWithPDFPage:(CGPDFPageRef)page pageNumber:(NSUInteger)pageNumber {
+- (id)initWithPDFPath:(NSString *)path pageNumber:(NSUInteger)pageNumber {
     if((self=[super initWithNibName:nil bundle:nil])) {
-        _page=page;
+        _pdfPath=[path copy];
         _pageNumber=pageNumber;
+        _document=CGPDFDocumentCreateWithURL((CFURLRef)[NSURL fileURLWithPath:_pdfPath]);
+        if(_document && _pageNumber>=1 && _pageNumber<=CGPDFDocumentGetNumberOfPages(_document)) {
+            _page=CGPDFDocumentGetPage(_document,_pageNumber);
+        }
     }
     return self;
 }
@@ -54,8 +58,11 @@
 }
 
 - (void)dealloc {
+    _pageView.pdfPage=NULL;
     [_pageView release];
     [_titleLabel release];
+    [_pdfPath release];
+    if(_document) CGPDFDocumentRelease(_document);
     [super dealloc];
 }
 @end
