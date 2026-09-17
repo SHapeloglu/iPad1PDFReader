@@ -8,6 +8,13 @@ static const NSUInteger IPAD1_DOCX_MAX_STYLES = 4096U;
 static uint16_t IP1LE16(const unsigned char *p) { return (uint16_t)(p[0] | (p[1] << 8)); }
 static uint32_t IP1LE32(const unsigned char *p) { return (uint32_t)(p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24)); }
 
+static BOOL IP1DOCXHasVisibleText(NSString *text) {
+    if(![text length]) return NO;
+    NSMutableCharacterSet *set=[[[NSCharacterSet whitespaceAndNewlineCharacterSet] mutableCopy] autorelease];
+    [set addCharactersInString:@"\u00A0"];
+    return [[text stringByTrimmingCharactersInSet:set] length]>0;
+}
+
 static NSError *IP1DOCXError(NSInteger code, NSString *message) {
     return [NSError errorWithDomain:@"iPad1PDFReader.DOCX" code:code userInfo:[NSDictionary dictionaryWithObject:(message?:@"DOCX okunamadı") forKey:NSLocalizedDescriptionKey]];
 }
@@ -106,6 +113,7 @@ static NSData *IP1DOCXDocumentXMLAtPath(NSString *path, NSError **error) {
 
 - (void)appendText:(NSString *)text {
     if(![text length]) return;
+    if(_inTable && _inCell && !IP1DOCXHasVisibleText(text)) return;
     if(_paragraphIsList && !_paragraphHasText) [_workingText appendString:@"• "];
     NSUInteger start=[_workingText length];
     [_workingText appendString:text];
