@@ -1,5 +1,6 @@
 #import "PDFTextExtractor.h"
 #import <math.h>
+#import <string.h>
 
 typedef struct {
     NSMutableString *text;
@@ -15,6 +16,67 @@ typedef struct {
     CGFloat rise;
     NSInteger textRenderingMode;
 } PDFTextState;
+
+typedef struct {
+    CGPDFDictionaryRef xobjects;
+    CGRect mediaBox;
+    BOOL foundLargePageImage;
+} PDFPageImageProbe;
+
+static void ProbePageImageXObject(const char *key, CGPDFObjectRef value, void *info) {
+    PDFPageImageProbe *probe=(PDFPageImageProbe *)info;
+    if(!probe || probe->foundLargePageImage || !probe->xobjects || !key) return;
+
+    CGPDFStreamRef stream=NULL;
+    if(!CGPDFDictionaryGetStream(probe->xobjects,key,&stream) || !stream) return;
+    CGPDFDictionaryRef dict=CGPDFStreamGetDictionary(stream);
+    if(!dict) return;
+
+    const char *subtype=NULL;
+    if(!CGPDFDictionaryGetName(dict,"Subtype",&subtype) || !subtype || strcmp(subtype,"Image")!=0) return;
+
+    CGPDFInteger imageW=0,imageH=0;
+    if(!CGPDFDictionaryGetInteger(dict,"Width",&imageW) || !CGPDFDictionaryGetInteger(dict,"Height",&imageH)) return;
+    if(imageW<500 || imageH<500) return;
+
+    CGFloat pageW=fabs(probe->mediaBox.size.width);
+    CGFloat pageH=fabs(probe->mediaBox.size.height);
+    if(pageW<=0.0f || pageH<=0.0f) return;
+
+    CGFloat pageAspect=pageW/pageH;
+    CGFloat imageAspect=(CGFloat)imageW/(CGFloat)imageH;
+    CGFloat ratio=imageAspect/pageAspect;
+    CGFloat rotatedRatio=(1.0f/imageAspect)/pageAspect;
+
+    /*
+     Conservative scanned-page guard: a large image whose aspect ratio closely
+     follows the page is very likely the page scan itself. Some OCR PDFs expose
+     a hidden/transparent text layer using rendering techniques other than Tr=3.
+     On iPad 1 it is safer to reject semantic text-mark geometry on such pages
+     than to draw underline/strikeout in visibly wrong positions.
+    */
+    if((ratio>=0.78f && ratio<=1.28f) || (rotatedRatio>=0.78f && rotatedRatio<=1.28f))
+        probe->foundLargePageImage=YES;
+}
+
+static BOOL PageLooksImageDominant(CGPDFPageRef page) {
+    if(!page) return NO;
+    CGPDFDictionaryRef pageDict=CGPDFPageGetDictionary(page);
+    if(!pageDict) return NO;
+
+    CGPDFDictionaryRef resources=NULL;
+    if(!CGPDFDictionaryGetDictionary(pageDict,"Resources",&resources) || !resources) return NO;
+
+    CGPDFDictionaryRef xobjects=NULL;
+    if(!CGPDFDictionaryGetDictionary(resources,"XObject",&xobjects) || !xobjects) return NO;
+
+    PDFPageImageProbe probe;
+    probe.xobjects=xobjects;
+    probe.mediaBox=CGPDFPageGetBoxRect(page,kCGPDFMediaBox);
+    probe.foundLargePageImage=NO;
+    CGPDFDictionaryApplyFunction(xobjects,ProbePageImageXObject,&probe);
+    return probe.foundLargePageImage;
+}
 
 static void AppendPDFString(CGPDFStringRef pdfString, PDFTextState *state) {
     if(!pdfString || !state) return;
@@ -190,6 +252,7 @@ static void ScanPage(CGPDFPageRef page, PDFTextState *state) {
 
 + (NSArray *)normalizedTextRectsForPage:(CGPDFPageRef)page maxRects:(NSUInteger)maxRects {
     if(!page||maxRects==0) return [NSArray array];
+    if(PageLooksImageDominant(page)) return [NSArray array];
     NSUInteger hardLimit=MIN(maxRects,(NSUInteger)160);
     NSMutableArray *rects=[NSMutableArray arrayWithCapacity:hardLimit];
     PDFTextState state;
