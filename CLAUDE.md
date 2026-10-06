@@ -1,46 +1,46 @@
 # CLAUDE.md
 
-Read `SESSION.md`, `ARCHITECTURE.md`, `INTEGRATION.md`, `TASKS.md`, `TESTING.md` and `AGENTS.md` before changing code.
+Kodu değiştirmeden önce `SESSION.md`, `ARCHITECTURE.md`, `INTEGRATION.md`, `TASKS.md`, `TESTING.md` ve `AGENTS.md` dosyalarını oku.
 
-## Core rule
-**Never trade iPad 1 stability for feature count.**
+## Temel kural
+**iPad 1 kararlılığını asla özellik sayısıyla takas etme.**
 
-Permanent target:
+Kalıcı hedef:
 - iPad 1 / Apple A4
 - 256 MB RAM
 - iOS 5.1.1
 - armv7
 - non-ARC / MRC
-- Theos + legacy iPhoneOS6.1 SDK
+- Theos + eski iPhoneOS6.1 SDK
 
-## Ecosystem rule
-Do not turn iPad1PDFReader into a monolith.
+## Ekosistem kuralı
+iPad1PDFReader'ı monolitik bir uygulamaya dönüştürme.
 
-- iPad1Files owns local file management/shared storage/Open With.
-- iPad1FTPDownloader owns FTP transfer/browse/queue/resume.
-- iPad1PDFReader owns PDF reading/search/reflow/annotation/page operations.
+- Yerel dosya yönetimi / ortak depolama / "Birlikte Aç" iPad1Files'ındır.
+- FTP transferi / gezinme / kuyruk / devam iPad1FTPDownloader'ındır.
+- PDF okuma / arama / yeniden akış / notlandırma / sayfa işlemleri iPad1PDFReader'ındır.
 
-Prefer lightweight handoff over duplicated engines.
+Motorları çoğaltmak yerine hafif devri tercih et.
 
-## Coding style
-- legacy Objective-C compatible with iOS 5;
-- explicit manual memory ownership;
-- Foundation/UIKit/CoreGraphics first;
-- avoid uncontrolled concurrency;
-- keep temporary text/images/geometry short-lived;
-- use hard caps for lists/caches;
-- fail gracefully on unsupported PDF constructs.
+## Kod stili
+- iOS 5 ile uyumlu eski Objective-C;
+- açık manuel bellek sahipliği;
+- önce Foundation / UIKit / CoreGraphics;
+- kontrolsüz eşzamanlılıktan kaçın;
+- geçici metin / görsel / geometri kısa ömürlü olsun;
+- liste ve önbelleklerde kesin üst sınırlar;
+- desteklenmeyen PDF yapılarında nazikçe başarısız ol.
 
-## Current development priority
-Real text highlight with fluorescent colors, page-local only.
+## Güncel geliştirme önceliği
+Fosforlu renklerle, yalnızca sayfa bazlı gerçek metin vurgulama.
 
-Do not create whole-document text/glyph indexes. Do not add OCR/AI. Keep region highlight as fallback for image PDFs.
+Tüm belgeyi kapsayan metin/glif dizini oluşturma. OCR/AI ekleme. Görsel PDF'ler için bölge vurgulamayı yedek olarak koru.
 
-## New chat continuation
-Always continue from:
+## Yeni sohbette devam
+Her zaman şuradan devam et:
 
 ```text
-SESSION.md -> Immediate next action
+SESSION.md -> Hemen yapılacak sonraki adım
 ```
 
-Do not infer an older chat state if repository documentation says otherwise.
+Repo dokümantasyonu aksini söylüyorsa daha eski bir sohbet durumunu varsayma.

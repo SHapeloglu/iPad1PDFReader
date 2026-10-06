@@ -1,44 +1,44 @@
 # CHANGELOG.md
 
-## v3.2 development head — 2026-08-18
-- Added zoom-centering and zoom-persistence UX improvements.
-- Added double-tap zoom and direct page-number navigation.
-- Added bounded Belge Gezgini for bookmarks, notes and highlights.
-- Added incremental page-by-page search progress and Cancel; max 40 results.
-- Added lightweight outline destination navigation where resolvable.
-- Added page note add/view/edit/delete.
-- Added lightweight region-highlight workflow and started fluorescent highlight-color support.
-- Current next phase: page-local selectable-text highlight with yellow/green/pink/orange/cyan palette.
-- Page Manager now exports only after explicit save and writes a new PDF.
-- Added iPad1Files shared PDF discovery from `PDFs` and `Downloads`.
-- Defined `ipad1pdf://open?path=...` handoff and in-place shared-file policy.
-- Formalized modular app split: iPad1Files = file management, iPad1FTPDownloader = FTP transfer, iPad1PDFReader = PDF features.
-- Built-in PDFReader HTTP/FTP/WebDAV is maintenance-only.
-- OCR, AI/ML, whole-document caches/indexes and heavy network SDKs remain out of scope.
-- Physical iPad 1 validation is still required before release tagging.
+## v3.2 geliştirme sürümü — 2026-08-18
+- Yakınlaştırmayı ortalama ve yakınlaştırmanın korunması için kullanıcı deneyimi iyileştirmeleri eklendi.
+- Çift dokunuşla yakınlaştırma ve doğrudan sayfa numarasına gitme eklendi.
+- Yer imleri, notlar ve vurgular için sınırlı Belge Gezgini eklendi.
+- Sayfa sayfa kademeli arama ilerlemesi ve İptal eklendi; en fazla 40 sonuç.
+- Çözümlenebildiği yerlerde hafif içindekiler hedefi gezinmesi eklendi.
+- Sayfa notu ekleme/görüntüleme/düzenleme/silme eklendi.
+- Hafif bölge vurgulama akışı eklendi ve fosforlu vurgu rengi desteğine başlandı.
+- Sıradaki aşama: sarı/yeşil/pembe/turuncu/camgöbeği paletiyle sayfa bazlı seçilebilir metin vurgulama.
+- Sayfa Yöneticisi artık yalnızca açıkça kaydedildikten sonra dışa aktarıyor ve yeni bir PDF yazıyor.
+- iPad1Files'ın `PDFs` ve `Downloads` klasörlerinden ortak PDF bulma eklendi.
+- `ipad1pdf://open?path=...` devri ve ortak dosyayı yerinde açma politikası tanımlandı.
+- Modüler uygulama ayrımı resmileştirildi: iPad1Files = dosya yönetimi, iPad1FTPDownloader = FTP transferi, iPad1PDFReader = PDF özellikleri.
+- PDFReader'ın yerleşik HTTP/FTP/WebDAV kodu yalnızca bakım modunda.
+- OCR, AI/ML, tüm belgeyi kapsayan önbellekler/dizinler ve ağır ağ SDK'ları kapsam dışında kalmaya devam ediyor.
+- Sürüm etiketlemeden önce fiziksel iPad 1 doğrulaması hâlâ gerekli.
 
 ## 3.1.0-memorysafe
-- Added explicit `MemoryBudget` policy.
-- Thumbnail cache bounded to 8 small images.
-- Thumbnail cache clears on memory warning.
-- Search results capped at 40.
-- Reflow changed to one-page-at-a-time text loading.
-- Added memory-warning cleanup paths.
-- Reaffirmed no on-device OCR / AI / large multi-page bitmap caches.
+- Açık `MemoryBudget` politikası eklendi.
+- Küçük resim önbelleği 8 küçük görselle sınırlandı.
+- Küçük resim önbelleği bellek uyarısında temizleniyor.
+- Arama sonuçları 40 ile sınırlandı.
+- Yeniden Akış, metni sayfa sayfa yükleyecek şekilde değiştirildi.
+- Bellek uyarısı temizlik yolları eklendi.
+- Cihaz üzerinde OCR / AI / büyük çok sayfalı bitmap önbelleği olmadığı yeniden teyit edildi.
 
 ## 3.0.0
-- Added `CGPDFScanner` content-stream text extraction/search.
-- Added Reflow reading mode.
-- Added WebDAV/network center foundation.
-- Added page manager and PDF merge/export infrastructure.
-- Added annotation flatten export.
-- Added SMB/SFTP optional connector placeholders.
+- `CGPDFScanner` ile içerik akışından metin çıkarma/arama eklendi.
+- Yeniden Akış okuma modu eklendi.
+- WebDAV / ağ merkezi temeli eklendi.
+- Sayfa yöneticisi ve PDF birleştirme/dışa aktarma altyapısı eklendi.
+- Notları PDF'e işleyerek dışa aktarma eklendi.
+- İsteğe bağlı SMB/SFTP bağlayıcı yer tutucuları eklendi.
 
-## 2.x development
-- Added thumbnails, themes, search experiments, annotations, URL import, outline support and file management extensions.
+## 2.x geliştirme
+- Küçük resimler, temalar, arama denemeleri, notlandırma, URL'den içe aktarma, içindekiler desteği ve dosya yönetimi uzantıları eklendi.
 
 ## 1.0.0
-- First working iPad 1 PDF reader.
-- Core Graphics single-page rendering.
-- PDF library, zoom, previous/next, bookmarks, resume-last-page, File Sharing.
-- Proven build with `TARGET = iphone:clang:6.1:5.1` and legacy iPhoneOS6.1 SDK.
+- iPad 1 için ilk çalışan PDF okuyucu.
+- Core Graphics ile tek sayfa görüntüleme.
+- PDF kütüphanesi, yakınlaştırma, önceki/sonraki, yer imleri, son sayfadan devam, Dosya Paylaşımı.
+- `TARGET = iphone:clang:6.1:5.1` ve eski iPhoneOS6.1 SDK ile derlendiği kanıtlandı.

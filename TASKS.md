@@ -1,77 +1,77 @@
 # TASKS.md
 
-## Priority 0 — finish and prove current development head
-- [ ] Pull current `main` and clean-build with legacy Theos/iPhoneOS6.1 SDK.
-- [ ] Keep `ARCHS = armv7` and `TARGET = iphone:clang:6.1:5.1` unchanged.
-- [ ] Fix only actual iOS 5.1.1 / MRC compile issues.
-- [ ] Install on physical iPad 1.
-- [ ] Verify shared PDFs from iPad1Files open without duplicate copies.
-- [ ] Verify `ipad1pdf://open?path=...` handoff.
-- [ ] Verify zoom centering, zoom persistence, double-tap and page-number navigation.
-- [ ] Verify Belge Gezgini, search progress/cancel, outline page jumps and explicit Page Manager save.
+## Öncelik 0 — güncel geliştirme sürümünü bitir ve kanıtla
+- [ ] Güncel `main`'i çek ve eski Theos/iPhoneOS6.1 SDK ile temiz derle.
+- [ ] `ARCHS = armv7` ve `TARGET = iphone:clang:6.1:5.1` değerlerini değiştirme.
+- [ ] Yalnızca gerçek iOS 5.1.1 / MRC derleme sorunlarını düzelt.
+- [ ] Fiziksel iPad 1'e kur.
+- [ ] iPad1Files'tan gelen ortak PDF'lerin yinelenen kopya olmadan açıldığını doğrula.
+- [ ] `ipad1pdf://open?path=...` devrini doğrula.
+- [ ] Yakınlaştırma ortalama, yakınlaştırmanın korunması, çift dokunuş ve sayfa numarasına gitmeyi doğrula.
+- [ ] Belge Gezgini, arama ilerlemesi/iptali, içindekiler sayfa atlamaları ve Sayfa Yöneticisi'nde açık kaydetmeyi doğrula.
 
-## Priority 1 — real text highlight + fluorescent palette
-Primary current feature phase.
+## Öncelik 1 — gerçek metin vurgulama + fosforlu palet
+Güncel ana özellik aşaması.
 
-- [ ] Implement text-selection highlight only for the active page.
-- [ ] Do not build a whole-document text/glyph index.
-- [ ] Keep temporary selection geometry bounded and clear it on page change.
-- [ ] Clear temporary selection state on memory warning.
-- [ ] Add fluorescent colors:
-  - [ ] yellow
-  - [ ] green
-  - [ ] pink
-  - [ ] orange
-  - [ ] cyan/light blue
-- [ ] Remember last-used highlight color with lightweight persistence.
-- [ ] Persist only compact highlight annotation data: page + rect(s) + color.
-- [ ] Keep rectangular region highlight as fallback for scanned/image PDFs.
-- [ ] If there is no selectable text layer, fail gracefully; never start OCR on-device.
-- [ ] Ensure flattened export preserves chosen highlight colors.
+- [ ] Metin seçerek vurgulamayı yalnızca aktif sayfa için yaz.
+- [ ] Tüm belgeyi kapsayan metin/glif dizini oluşturma.
+- [ ] Geçici seçim geometrisini sınırlı tut ve sayfa değişince temizle.
+- [ ] Bellek uyarısında geçici seçim durumunu temizle.
+- [ ] Fosforlu renkleri ekle:
+  - [ ] sarı
+  - [ ] yeşil
+  - [ ] pembe
+  - [ ] turuncu
+  - [ ] camgöbeği / açık mavi
+- [ ] Son kullanılan vurgu rengini hafif bir kalıcılıkla hatırla.
+- [ ] Yalnızca sıkıştırılmış vurgu verisini sakla: sayfa + dikdörtgen(ler) + renk.
+- [ ] Taranmış/görsel PDF'ler için dikdörtgen bölge vurgulamayı yedek olarak koru.
+- [ ] Seçilebilir metin katmanı yoksa nazikçe başarısız ol; cihaz üzerinde asla OCR başlatma.
+- [ ] Notları işlenmiş dışa aktarmanın seçilen vurgu renklerini koruduğundan emin ol.
 
-## Priority 2 — annotation/document UX after highlight is stable
-- [ ] Tap existing highlight -> change color / delete.
-- [ ] Tap note marker -> open note directly.
-- [ ] Include Outline/Contents in unified document navigation if low-cost.
-- [ ] Add bounded reading history/back-forward, hard small cap (for example 10–20 locations).
-- [ ] Consider left/right edge page taps only if they do not conflict with zoom/annotation gestures.
-- [ ] Add text copy only if it can safely reuse page-local selection state.
+## Öncelik 2 — vurgulama kararlı olduktan sonra notlandırma/belge deneyimi
+- [ ] Mevcut vurguya dokun -> rengini değiştir / sil.
+- [ ] Not işaretine dokun -> notu doğrudan aç.
+- [ ] Düşük maliyetliyse İçindekiler'i birleşik belge gezinmesine dahil et.
+- [ ] Küçük ve kesin üst sınırlı (ör. 10–20 konum) okuma geçmişi / geri-ileri ekle.
+- [ ] Sol/sağ kenara dokunarak sayfa çevirmeyi yalnızca yakınlaştırma/not hareketleriyle çakışmıyorsa düşün.
+- [ ] Metin kopyalamayı yalnızca sayfa bazlı seçim durumunu güvenle yeniden kullanabiliyorsa ekle.
 
-## Priority 3 — memory/stability validation
-- [ ] 100+ page thumbnail scrolling; cache remains max 8.
-- [ ] Search results remain max 40.
-- [ ] Search/cancel repeatedly; no progressive growth.
-- [ ] Reflow remains page-local.
-- [ ] Belge Gezgini remains bounded to 80 annotation-summary items, max 40 per kind.
-- [ ] Open/close several large PDFs sequentially.
-- [ ] Zoom/page-change for 10 minutes.
-- [ ] Rotate while zoomed repeatedly.
-- [ ] Trigger memory pressure and verify temporary selection data is dropped.
-- [ ] Test 50+, 200+ page PDFs.
+## Öncelik 3 — bellek/kararlılık doğrulaması
+- [ ] 100+ sayfada küçük resim kaydırma; önbellek en fazla 8 kalıyor.
+- [ ] Arama sonuçları en fazla 40 kalıyor.
+- [ ] Tekrar tekrar ara/iptal et; kademeli büyüme yok.
+- [ ] Yeniden akış sayfa bazlı kalıyor.
+- [ ] Belge Gezgini 80 not özeti öğesi, tür başına en fazla 40 ile sınırlı kalıyor.
+- [ ] Birkaç büyük PDF'i art arda aç/kapat.
+- [ ] 10 dakika boyunca yakınlaştır/sayfa değiştir.
+- [ ] Yakınlaştırılmışken tekrar tekrar döndür.
+- [ ] Bellek baskısı oluştur ve geçici seçim verisinin bırakıldığını doğrula.
+- [ ] 50+ ve 200+ sayfalık PDF'leri test et.
 
-## Companion-app boundary — do not duplicate
-### Leave to iPad1Files
-- [ ] Do not implement general copy/move/rename/delete browser features in PDFReader.
-- [ ] Do not duplicate favorites/file organization/Open With registry.
+## Yardımcı uygulama sınırı — çoğaltma
+### iPad1Files'a bırakılır
+- [ ] PDFReader'da genel kopyala/taşı/yeniden adlandır/sil gezgin özellikleri yazma.
+- [ ] Favorileri / dosya düzenlemeyi / "Birlikte Aç" kaydını çoğaltma.
 
-### Leave to iPad1FTPDownloader
-- [ ] Do not expand FTP browsing/downloading/upload/queue/resume in PDFReader.
-- [ ] Existing PDFReader FTP/WebDAV code is maintenance-only.
+### iPad1FTPDownloader'a bırakılır
+- [ ] PDFReader'da FTP gezinme/indirme/yükleme/kuyruk/devam özelliklerini genişletme.
+- [ ] Mevcut PDFReader FTP/WebDAV kodu yalnızca bakım modunda.
 
-## Explicitly out of scope on-device
-- [ ] No OCR engine.
-- [ ] No AI/ML inference.
-- [ ] No whole-document high-resolution bitmap cache.
-- [ ] No persistent full-document text index.
-- [ ] No large background indexing service.
-- [ ] No modern cloud-provider SDKs.
-- [ ] No SMB/SFTP library merely for competitor parity.
-- [ ] No heavy replacement PDF engine without measured physical-device proof.
+## Cihaz üzerinde açıkça kapsam dışı
+- [ ] OCR motoru yok.
+- [ ] AI/ML çıkarımı yok.
+- [ ] Tüm belgeyi kapsayan yüksek çözünürlüklü bitmap önbelleği yok.
+- [ ] Kalıcı tam belge metin dizini yok.
+- [ ] Büyük arka plan dizinleme servisi yok.
+- [ ] Güncel bulut sağlayıcı SDK'ları yok.
+- [ ] Yalnızca rakip eşitliği için SMB/SFTP kütüphanesi yok.
+- [ ] Fiziksel cihazda ölçülmüş kanıt olmadan ağır yeni PDF motoru yok.
 
-## Definition of done
-A feature is complete only when:
-- it builds with the legacy target;
-- it runs on physical iPad 1;
-- memory use is bounded;
-- relevant `TESTING.md` checks pass;
-- docs are updated.
+## "Bitti" tanımı
+Bir özellik ancak şu durumda tamamlanmış sayılır:
+- eski hedefle derleniyor;
+- fiziksel iPad 1'de çalışıyor;
+- bellek kullanımı sınırlı;
+- ilgili `TESTING.md` kontrolleri geçiyor;
+- dokümanlar güncellendi.

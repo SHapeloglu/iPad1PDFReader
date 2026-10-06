@@ -1,12 +1,12 @@
 # INTEGRATION.md
 
-## Purpose
-This file is the authoritative integration contract between the iPad 1 specialist applications.
+## Amaç
+Bu dosya iPad 1 uzman uygulamaları arasındaki belirleyici entegrasyon sözleşmesidir.
 
-The goal is to make the applications complement each other without duplicating engines, storage or memory-heavy features.
+Amaç, uygulamaların motorları, depolamayı veya bellek ağırlıklı özellikleri çoğaltmadan birbirini tamamlamasıdır.
 
-## Platform contract
-All integrations must preserve:
+## Platform sözleşmesi
+Tüm entegrasyonlar şunları korumalıdır:
 - iPad 1;
 - Apple A4;
 - 256 MB RAM;
@@ -14,45 +14,45 @@ All integrations must preserve:
 - armv7;
 - non-ARC / MRC;
 - Theos;
-- legacy iPhoneOS 6.1 SDK compatibility.
+- eski iPhoneOS 6.1 SDK uyumluluğu.
 
-## Responsibility split
+## Sorumluluk dağılımı
 
 ### iPad1Files
-Owns canonical shared storage, local file/folder browsing, copy/move/rename/delete, pickers, favorites, local search, ZIP/archive and cross-app launch. It must not become a network-transfer, PDF-rendering or media-playback engine.
+Standart ortak depolama, yerel dosya/klasör gezinme, kopyala/taşı/yeniden adlandır/sil, seçiciler, favoriler, yerel arama, ZIP/arşiv ve uygulamalar arası açmadan sorumludur. Ağ transferi, PDF görüntüleme veya medya oynatma motoruna dönüşmemelidir.
 
 ### iPad1FTPDownloader
-Owns FTP connection, remote browsing, FTP download/upload, FTP transfer state, saved servers and remote FTP operations. It must not implement generic HTTP/HTTPS downloads.
+FTP bağlantısı, uzak gezinme, FTP indirme/yükleme, FTP transfer durumu, kayıtlı sunucular ve uzak FTP işlemlerinden sorumludur. Genel HTTP/HTTPS indirme yazmamalıdır.
 
 ### iPad1HTTPDownloader
-Owns HTTP/HTTPS URL downloads, redirects, response/header handling, streamed writes, `.part` lifecycle, progress/speed/ETA, Range-based resume where supported, cancel/retry, bounded queue and HTTP-specific failure recovery. It must not become a file manager, PDF reader or media player.
+HTTP/HTTPS URL indirmeleri, yönlendirmeler, yanıt/başlık işleme, akışla yazma, `.part` yaşam döngüsü, ilerleme/hız/kalan süre, desteklenen yerde Range ile devam, iptal/yeniden deneme, sınırlı kuyruk ve HTTP'ye özgü hatadan kurtarmadan sorumludur. Dosya yöneticisine, PDF okuyucuya veya medya oynatıcıya dönüşmemelidir.
 
 ### iPad1PDFReader
-Owns PDF rendering, zoom/navigation, search/reflow, bookmarks, outline, annotations/highlights/notes/signature and PDF page operations/export. It must not duplicate HTTP/FTP transfer engines.
+PDF görüntüleme, yakınlaştırma/gezinme, arama/yeniden akış, yer imleri, içindekiler, notlandırma/vurgu/not/imza ve PDF sayfa işlemleri/dışa aktarmadan sorumludur. HTTP/FTP transfer motorlarını çoğaltmamalıdır.
 
 ### iPad1Player
-Owns local media decode/playback, seeking, codecs and subtitle discovery/rendering. It receives only completed accessible local media paths from downloader applications.
+Yerel medya çözme/oynatma, ileri sarma, codec'ler ve altyazı bulma/göstermeden sorumludur. İndirici uygulamalardan yalnızca tamamlanmış ve erişilebilir yerel medya yollarını alır.
 
-## Canonical shared filesystem
-Owned by iPad1Files:
+## Standart ortak dosya sistemi
+iPad1Files'a ait:
 
 ```text
 /var/mobile/Media/iPad1Files
 ```
 
-Common directories include `Downloads/`, `Documents/`, `PDFs/`, `Images/`, `Music/`, `Videos/`, `Archives/`, `Shared/`, `Temp/` and `AppData/`.
+Ortak klasörler: `Downloads/`, `Documents/`, `PDFs/`, `Images/`, `Music/`, `Videos/`, `Archives/`, `Shared/`, `Temp/` ve `AppData/`.
 
-## Downloader storage contract
-Both FTP and HTTP downloaders should write completed files directly under the canonical shared storage, normally:
+## İndirici depolama sözleşmesi
+Hem FTP hem HTTP indiricileri tamamlanan dosyaları doğrudan standart ortak depolamaya, normalde şuraya yazmalıdır:
 
 ```text
 /var/mobile/Media/iPad1Files/Downloads/
 ```
 
-One logical transfer should produce one physical file. Do not copy a completed file into a downloader-private or reader-private directory merely for integration.
+Bir mantıksal transfer bir fiziksel dosya üretmelidir. Tamamlanan bir dosyayı yalnızca entegrasyon için indiriciye veya okuyucuya özel bir klasöre kopyalama.
 
-## Completed-file routing
-After successful transfer and only after the local file is accessible:
+## Tamamlanan dosyanın yönlendirilmesi
+Transfer başarıyla bittikten ve yalnızca yerel dosya erişilebilir olduktan sonra:
 
 ```text
 .mkv/.mp4/.mov/.m4v/.avi -> ipad1player://open?path=<percent-encoded-absolute-path>
@@ -60,42 +60,42 @@ After successful transfer and only after the local file is accessible:
 other                    -> ipad1files://show?path=<percent-encoded-absolute-path>
 ```
 
-The sender passes the same physical file path. No integration copy is permitted.
+Gönderen aynı fiziksel dosya yolunu iletir. Entegrasyon için kopyalamaya izin yoktur.
 
-## PDFReader discovery contract
-PDFReader should directly discover at least:
+## PDFReader bulma sözleşmesi
+PDFReader en az şu klasörleri doğrudan taramalıdır:
 
 ```text
 /var/mobile/Media/iPad1Files/PDFs
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
-Shared PDFs should open in-place where permissions allow.
+İzinler elverdiği ölçüde ortak PDF'ler bulundukları yerde açılmalıdır.
 
-## PDF handoff URL scheme
-Authoritative receiver contract:
+## PDF devri URL scheme'i
+Belirleyici alıcı sözleşmesi:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-Rules:
-- sender passes an absolute path;
-- path must be percent-encoded;
-- PDFReader validates file existence and `.pdf` type before opening;
-- shared files should not be copied solely because of the handoff;
-- ordinary external `Open In` files may still be copied to an app-owned persistent location when necessary.
+Kurallar:
+- gönderen mutlak yol iletir;
+- yol yüzde-kodlanmış olmalıdır;
+- PDFReader açmadan önce dosyanın varlığını ve `.pdf` türünü doğrular;
+- ortak dosyalar yalnızca devir nedeniyle kopyalanmamalıdır;
+- sıradan harici "Birlikte Aç" dosyaları gerektiğinde yine uygulamaya ait kalıcı bir konuma kopyalanabilir.
 
-## Networking policy
-Existing lightweight HTTP/FTP/WebDAV code inside PDFReader is maintenance-only. New HTTP/HTTPS download features belong to iPad1HTTPDownloader; FTP transfer features belong to iPad1FTPDownloader.
+## Ağ politikası
+PDFReader içindeki mevcut hafif HTTP/FTP/WebDAV kodu yalnızca bakım modundadır. Yeni HTTP/HTTPS indirme özellikleri iPad1HTTPDownloader'a, FTP transfer özellikleri iPad1FTPDownloader'a aittir.
 
-Do not add `libsmb2`, `libssh2`, cloud SDKs or other heavy stacks to PDFReader merely to match competitors.
+PDFReader'a yalnızca rakiplerle eşitlenmek için `libsmb2`, `libssh2`, bulut SDK'ları veya başka ağır yığınlar ekleme.
 
-## iPad 1 memory policy
-- no device-side OCR or AI/ML;
-- no whole-file download buffers;
-- no duplicate integration copies;
-- keep cross-app contracts path-based and lightweight.
+## iPad 1 bellek politikası
+- cihaz üzerinde OCR veya AI/ML yok;
+- dosyanın tamamını tutan indirme tamponları yok;
+- yinelenen entegrasyon kopyaları yok;
+- uygulamalar arası sözleşmeler yol tabanlı ve hafif kalır.
 
-## Change-control rule
-Any change to canonical root, common folder names, URL schemes, application responsibility boundaries or AppData namespaces must update the relevant integration/handoff documentation in the same development phase. Physical iPad testing remains authoritative.
+## Değişiklik kontrol kuralı
+Standart kök, ortak klasör adları, URL scheme'leri, uygulama sorumluluk sınırları veya AppData ad alanlarındaki her değişiklik, aynı geliştirme aşamasında ilgili entegrasyon/devir dokümantasyonunu da güncellemelidir. Belirleyici olan fiziksel iPad testidir.

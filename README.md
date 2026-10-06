@@ -1,16 +1,16 @@
 # iPad1PDFReader
 
-A lightweight advanced PDF reader built specifically for the **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7**.
+Özellikle **orijinal iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7** için yazılmış hafif ama gelişmiş bir PDF okuyucu.
 
-The project deliberately prioritizes **stability, bounded memory and clear responsibility boundaries** over feature count.
+Proje bilinçli olarak özellik sayısı yerine **kararlılığı, sınırlı belleği ve net sorumluluk sınırlarını** önceler.
 
-## Current development state
-Current source is a **v3.2 development head** on top of `v3.1.0-memorysafe`.
+## Güncel geliştirme durumu
+Güncel kaynak, `v3.1.0-memorysafe` üzerine kurulu bir **v3.2 geliştirme sürümüdür**.
 
-It must still be clean-built and validated on the physical iPad 1 after the latest highlight/integration work. See `SESSION.md`.
+Son vurgulama/entegrasyon çalışmasından sonra hâlâ temiz derlenip fiziksel iPad 1'de doğrulanması gerekiyor. Bkz. `SESSION.md`.
 
-## Ecosystem
-This app is one part of a three-app iPad 1 ecosystem:
+## Ekosistem
+Bu uygulama üç uygulamalı bir iPad 1 ekosisteminin parçasıdır:
 
 ```text
 iPad1Files
@@ -23,100 +23,104 @@ iPad1PDFReader
   -> PDF read/search/reflow/bookmark/annotation/page management
 ```
 
-The applications should **complement, not duplicate, each other**.
+(iPad1Files: ortak dosya sistemi, kopyala/taşı/yeniden adlandır/sil, "Birlikte Aç" · iPad1FTPDownloader: FTP gezinme/indirme/yükleme/kuyruk/devam · iPad1PDFReader: PDF okuma/arama/yeniden akış/yer imi/notlandırma/sayfa yönetimi)
 
-Canonical shared root:
+Uygulamalar birbirini **çoğaltmamalı, tamamlamalıdır**.
+
+Standart ortak kök:
 
 ```text
 /var/mobile/Media/iPad1Files
 ```
 
-PDFReader discovers shared PDFs from at least:
+PDFReader ortak PDF'leri en az şu klasörlerden bulur:
 
 ```text
 /var/mobile/Media/iPad1Files/PDFs
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
-PDF handoff:
+PDF devri:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-Shared PDFs should be opened in-place where safe instead of creating unnecessary duplicate files.
+Ortak PDF'ler gereksiz kopya oluşturmak yerine, güvenli olduğu yerde bulundukları konumda açılmalıdır.
 
-## PDFReader features
-- Core Graphics PDF rendering;
-- one active full page at a time;
-- pinch zoom;
-- zoom persistence across page navigation;
-- double-tap zoom;
-- direct page-number navigation;
-- bookmarks + resume-last-page;
-- bounded thumbnails;
-- incremental text search with progress/cancel;
-- page-at-a-time Reflow;
-- outline support;
-- Belge Gezgini for bookmarks/notes/highlights;
-- drawing;
-- page notes;
-- region highlight;
-- simple signature;
-- flattened annotation export;
-- page reorder/delete/rotate/export;
-- PDF merge infrastructure;
-- iTunes File Sharing / Open In;
-- iPad1Files shared-storage handoff.
+## PDFReader özellikleri
+- Core Graphics ile PDF görüntüleme;
+- aynı anda tek aktif tam sayfa;
+- iki parmakla yakınlaştırma;
+- sayfa geçişlerinde yakınlaştırmanın korunması;
+- çift dokunuşla yakınlaştırma;
+- doğrudan sayfa numarasına gitme;
+- yer imleri + son sayfadan devam;
+- sınırlı küçük resimler;
+- ilerleme/iptal destekli kademeli metin araması;
+- sayfa sayfa Yeniden Akış (Reflow);
+- içindekiler (outline) desteği;
+- yer imleri/notlar/vurgular için Belge Gezgini;
+- çizim;
+- sayfa notları;
+- bölge vurgulama;
+- basit imza;
+- notları PDF'e işleyerek (flatten) dışa aktarma;
+- sayfa sıralama/silme/döndürme/dışa aktarma;
+- PDF birleştirme altyapısı;
+- iTunes Dosya Paylaşımı / "Birlikte Aç";
+- iPad1Files ortak depolama devri.
 
-## Current feature phase: better highlight UX
-The desired normal-text workflow is:
+## Güncel özellik aşaması: daha iyi vurgulama deneyimi
+Normal metin için istenen akış:
 
 ```text
 select text -> Highlight -> fluorescent color
 ```
 
-Target colors:
-- yellow;
-- green;
-- pink;
-- orange;
-- cyan/light blue.
+(metni seç -> Vurgula -> fosforlu renk)
 
-For scanned/image-only PDFs with no text layer, region highlight remains the lightweight fallback.
+Hedef renkler:
+- sarı;
+- yeşil;
+- pembe;
+- turuncu;
+- camgöbeği / açık mavi.
 
-Real text highlight must remain page-local; no whole-document text/glyph index is allowed.
+Metin katmanı olmayan taranmış/yalnız görsel PDF'lerde bölge vurgulama hafif yedek yöntem olarak kalır.
 
-## Memory policy
-Hard rules:
-- one active full page render;
-- thumbnail cache max **8**;
-- search results max **40**;
-- search page-by-page;
-- Reflow page-by-page;
-- Belge Gezgini annotation summary max **80**, max **40 per kind**;
-- no whole-document bitmap cache;
-- no persistent whole-document text index;
-- no on-device OCR;
-- no AI/ML;
-- no uncontrolled parallel heavy work;
-- disposable state clears on memory warning.
+Gerçek metin vurgulama sayfa bazlı kalmalıdır; tüm belgeyi kapsayan metin/glif dizinine izin yoktur.
 
-Preferred engineering targets:
-- normal reading roughly **30–50 MB**;
-- special operations ideally well below **70–90 MB**.
+## Bellek politikası
+Kesin kurallar:
+- aynı anda tek aktif tam sayfa görüntüleme;
+- küçük resim önbelleği en fazla **8**;
+- arama sonucu en fazla **40**;
+- arama sayfa sayfa;
+- Yeniden Akış sayfa sayfa;
+- Belge Gezgini not özeti en fazla **80**, tür başına en fazla **40**;
+- tüm belgeyi kapsayan bitmap önbelleği yok;
+- kalıcı tam belge metin dizini yok;
+- cihaz üzerinde OCR yok;
+- AI/ML yok;
+- kontrolsüz paralel ağır iş yok;
+- bellek uyarısında atılabilir durum temizlenir.
 
-## Features intentionally delegated
-Do not grow these inside PDFReader:
-- general file manager -> **iPad1Files**;
-- FTP browse/download/upload/queue/resume -> **iPad1FTPDownloader**.
+Tercih edilen mühendislik hedefleri:
+- normal okumada yaklaşık **30–50 MB**;
+- özel işlemlerde ideal olarak **70–90 MB**'nin oldukça altında.
 
-Existing built-in HTTP/FTP/WebDAV paths are maintenance-only.
+## Bilinçli olarak devredilen özellikler
+Bunları PDFReader içinde büyütme:
+- genel dosya yöneticisi -> **iPad1Files**;
+- FTP gezinme/indirme/yükleme/kuyruk/devam -> **iPad1FTPDownloader**.
 
-## Build
-Expected environment:
-- Theos at `~/theos`;
-- legacy `iPhoneOS6.1.sdk`.
+Mevcut yerleşik HTTP/FTP/WebDAV yolları yalnızca bakım modundadır.
+
+## Derleme
+Beklenen ortam:
+- `~/theos` altında Theos;
+- eski `iPhoneOS6.1.sdk`.
 
 ```bash
 make clean
@@ -124,17 +128,17 @@ rm -rf .theos
 make package FINALPACKAGE=1
 ```
 
-Target must remain:
+Hedef şu şekilde kalmalı:
 
 ```make
 ARCHS = armv7
 TARGET = iphone:clang:6.1:5.1
 ```
 
-Do not switch to modern iPhoneOS9.3 SDK for this project.
+Bu projede güncel iPhoneOS9.3 SDK'ya geçme.
 
-## Documentation
-Before development read:
+## Dokümantasyon
+Geliştirmeden önce oku:
 1. `SESSION.md`
 2. `ARCHITECTURE.md`
 3. `INTEGRATION.md`
@@ -144,7 +148,7 @@ Before development read:
 7. `CLAUDE.md`
 8. `README.md`
 
-Then continue from `SESSION.md -> Immediate next action`.
+Ardından `SESSION.md -> Hemen yapılacak sonraki adım` bölümünden devam et.
 
-## Golden rule
-**If a feature risks stability on Apple A4 / 256 MB RAM / iOS 5.1.1, redesign it as page-local/bounded, move it to the correct companion app, or do not add it.**
+## Altın kural
+**Bir özellik Apple A4 / 256 MB RAM / iOS 5.1.1'de kararlılığı riske atıyorsa, onu sayfa bazlı/sınırlı olacak şekilde yeniden tasarla, doğru yardımcı uygulamaya taşı ya da hiç ekleme.**

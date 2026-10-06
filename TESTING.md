@@ -1,9 +1,9 @@
 # TESTING.md
 
-## Source of truth
-Physical **iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** is the source of truth. Simulator-only success is insufficient.
+## Doğruluk kaynağı
+Doğruluk kaynağı fiziksel **iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** cihazıdır. Yalnızca simülatörde başarı yeterli değildir.
 
-## Build validation
+## Derleme doğrulaması
 
 ```bash
 make clean
@@ -11,139 +11,139 @@ rm -rf .theos
 make package FINALPACKAGE=1
 ```
 
-Required:
+Gerekenler:
 - armv7;
-- minimum iOS 5.1;
-- legacy iPhoneOS 6.1 SDK;
+- en düşük iOS 5.1;
+- eski iPhoneOS 6.1 SDK;
 - non-ARC / MRC.
 
-`building for iOS 5.1.0 is deprecated` warning is acceptable.
-Do not accept simulator `.tbd`/armv7 linker symptoms from iPhoneOS9.3.sdk.
+`building for iOS 5.1.0 is deprecated` uyarısı kabul edilebilir.
+iPhoneOS9.3.sdk kaynaklı simülatör `.tbd` / armv7 bağlayıcı belirtilerini kabul etme.
 
-## Core smoke test
-- [ ] App launches.
-- [ ] Library opens.
-- [ ] Local PDF opens.
-- [ ] Previous/next works.
-- [ ] Pinch zoom does not jump/lean left.
-- [ ] Zoom scale survives page change.
-- [ ] Approximate reading position survives page change while zoomed.
-- [ ] Double-tap zoom works and returns to 1x.
-- [ ] Direct page-number navigation validates range.
-- [ ] Last page persists.
-- [ ] Bookmark persists.
+## Temel duman testi
+- [ ] Uygulama açılıyor.
+- [ ] Kütüphane açılıyor.
+- [ ] Yerel PDF açılıyor.
+- [ ] Önceki/sonraki çalışıyor.
+- [ ] İki parmakla yakınlaştırma zıplamıyor / sola kaymıyor.
+- [ ] Yakınlaştırma oranı sayfa değişiminde korunuyor.
+- [ ] Yakınlaştırılmışken sayfa değişince yaklaşık okuma konumu korunuyor.
+- [ ] Çift dokunuşla yakınlaştırma çalışıyor ve 1x'e dönüyor.
+- [ ] Doğrudan sayfa numarasına gitme aralığı doğruluyor.
+- [ ] Son sayfa hatırlanıyor.
+- [ ] Yer imi hatırlanıyor.
 
-## iPad1Files integration
-- [ ] PDFs in `/var/mobile/Media/iPad1Files/PDFs` appear.
-- [ ] PDFs in `/var/mobile/Media/iPad1Files/Downloads` appear.
-- [ ] Shared PDF opens in-place.
-- [ ] Opening shared PDF does not silently create a duplicate in app Documents.
-- [ ] `ipad1pdf://open?path=...` opens the requested existing PDF.
-- [ ] Invalid/nonexistent path fails safely.
+## iPad1Files entegrasyonu
+- [ ] `/var/mobile/Media/iPad1Files/PDFs` içindeki PDF'ler görünüyor.
+- [ ] `/var/mobile/Media/iPad1Files/Downloads` içindeki PDF'ler görünüyor.
+- [ ] Ortak PDF bulunduğu yerde açılıyor.
+- [ ] Ortak PDF'i açmak uygulamanın Documents klasöründe sessizce kopya oluşturmuyor.
+- [ ] `ipad1pdf://open?path=...` istenen mevcut PDF'i açıyor.
+- [ ] Geçersiz / olmayan yol güvenle başarısız oluyor.
 
-## Search
-- [ ] 100+ page text PDF search progresses incrementally.
-- [ ] UI remains responsive between pages.
-- [ ] Cancel stops search safely.
-- [ ] Results remain capped at 40.
-- [ ] No persistent full-document text index appears.
-- [ ] Repeat search/cancel 10 times without progressive slowdown/crash.
+## Arama
+- [ ] 100+ sayfalık metin PDF'inde arama kademeli ilerliyor.
+- [ ] Sayfalar arasında arayüz yanıt veriyor.
+- [ ] İptal aramayı güvenle durduruyor.
+- [ ] Sonuçlar 40 ile sınırlı kalıyor.
+- [ ] Kalıcı tam belge metin dizini oluşmuyor.
+- [ ] 10 kez ara/iptal et; kademeli yavaşlama/çökme yok.
 
 ## Belge Gezgini
-- [ ] Bookmarks list correctly.
-- [ ] Notes list correctly.
-- [ ] Highlights list correctly.
-- [ ] Selecting an item jumps to correct page.
-- [ ] Annotation summary remains max 80 total and max 40 per kind.
-- [ ] Repeated open/close on a 200+ page PDF does not grow memory progressively.
+- [ ] Yer imleri doğru listeleniyor.
+- [ ] Notlar doğru listeleniyor.
+- [ ] Vurgular doğru listeleniyor.
+- [ ] Bir öğe seçilince doğru sayfaya gidiliyor.
+- [ ] Not özeti toplam en fazla 80, tür başına en fazla 40 kalıyor.
+- [ ] 200+ sayfalık PDF'te tekrar tekrar aç/kapat belleği kademeli büyütmüyor.
 
-## Outline
-- [ ] Direct `/Dest` outline target navigates correctly.
-- [ ] Direct `/A /GoTo` array target navigates correctly.
-- [ ] Unsupported/named destination fails gracefully without crash.
+## İçindekiler
+- [ ] Doğrudan `/Dest` içindekiler hedefi doğru sayfaya gidiyor.
+- [ ] Doğrudan `/A /GoTo` dizi hedefi doğru sayfaya gidiyor.
+- [ ] Desteklenmeyen / adlandırılmış hedef çökmeden nazikçe başarısız oluyor.
 
-## Highlight — current priority
-### Selectable text PDF
-- [ ] Text selection uses only active-page temporary geometry.
-- [ ] Selected text can be highlighted.
-- [ ] Yellow fluorescent color renders correctly.
-- [ ] Green fluorescent color renders correctly.
-- [ ] Pink fluorescent color renders correctly.
-- [ ] Orange fluorescent color renders correctly.
-- [ ] Cyan/light-blue fluorescent color renders correctly.
-- [ ] Text remains readable through highlight transparency.
-- [ ] Last-used color is remembered if implemented.
-- [ ] Page change clears temporary selection state.
-- [ ] Memory warning clears temporary selection state.
-- [ ] Returning to the page redraws saved highlight from compact annotation data.
+## Vurgulama — güncel öncelik
+### Seçilebilir metinli PDF
+- [ ] Metin seçimi yalnızca aktif sayfanın geçici geometrisini kullanıyor.
+- [ ] Seçilen metin vurgulanabiliyor.
+- [ ] Sarı fosforlu renk doğru görünüyor.
+- [ ] Yeşil fosforlu renk doğru görünüyor.
+- [ ] Pembe fosforlu renk doğru görünüyor.
+- [ ] Turuncu fosforlu renk doğru görünüyor.
+- [ ] Camgöbeği / açık mavi fosforlu renk doğru görünüyor.
+- [ ] Vurgu saydamlığından metin okunabilir kalıyor.
+- [ ] Yazıldıysa son kullanılan renk hatırlanıyor.
+- [ ] Sayfa değişimi geçici seçim durumunu temizliyor.
+- [ ] Bellek uyarısı geçici seçim durumunu temizliyor.
+- [ ] Sayfaya dönünce kayıtlı vurgu sıkıştırılmış not verisinden yeniden çiziliyor.
 
-### Image/scanned PDF without text layer
-- [ ] Real text selection fails gracefully.
-- [ ] No OCR starts on-device.
-- [ ] Optional region/rectangle highlight remains usable as fallback.
+### Metin katmanı olmayan görsel/taranmış PDF
+- [ ] Gerçek metin seçimi nazikçe başarısız oluyor.
+- [ ] Cihazda OCR başlamıyor.
+- [ ] İsteğe bağlı bölge/dikdörtgen vurgulama yedek olarak kullanılabilir kalıyor.
 
-### Highlight maintenance
-When implemented:
-- [ ] Tap/select existing highlight.
-- [ ] Change color.
-- [ ] Delete highlight.
-- [ ] Flattened export preserves color.
+### Vurgu bakımı
+Yazıldığında:
+- [ ] Mevcut vurguya dokun/seç.
+- [ ] Rengini değiştir.
+- [ ] Vurguyu sil.
+- [ ] Notları işlenmiş dışa aktarma rengi koruyor.
 
-## Notes
-- [ ] Add note.
-- [ ] View note.
-- [ ] Edit note.
-- [ ] Delete note.
-- [ ] Note remains page-specific.
-- [ ] Tap marker to open when that feature is implemented.
+## Notlar
+- [ ] Not ekle.
+- [ ] Notu görüntüle.
+- [ ] Notu düzenle.
+- [ ] Notu sil.
+- [ ] Not sayfaya özgü kalıyor.
+- [ ] Özellik yazıldığında işarete dokunarak açma.
 
-## Page Manager
-Use disposable PDFs.
-- [ ] Reorder pages.
-- [ ] Delete page.
-- [ ] Rotate page.
-- [ ] Leaving without explicit save does not generate output.
-- [ ] `Kaydet` creates a new edited PDF.
-- [ ] Original remains intact.
+## Sayfa Yöneticisi
+Silinebilir PDF'ler kullan.
+- [ ] Sayfaları yeniden sırala.
+- [ ] Sayfa sil.
+- [ ] Sayfa döndür.
+- [ ] Açıkça kaydetmeden çıkınca çıktı oluşmuyor.
+- [ ] `Kaydet` yeni, düzenlenmiş bir PDF oluşturuyor.
+- [ ] Orijinal bozulmadan kalıyor.
 
-## Thumbnail memory test
-- [ ] Open 100+ page PDF.
-- [ ] Scroll bottom/back repeatedly.
-- [ ] Cache remains max 8 thumbnails.
-- [ ] Cache can recover after memory pressure.
+## Küçük resim bellek testi
+- [ ] 100+ sayfalık PDF aç.
+- [ ] Sona ve geri tekrar tekrar kaydır.
+- [ ] Önbellek en fazla 8 küçük resim kalıyor.
+- [ ] Bellek baskısından sonra önbellek toparlanabiliyor.
 
-## Reflow memory test
-- [ ] Move through 30+ pages.
-- [ ] Only current/page-scoped text is retained.
-- [ ] Font size controls remain responsive.
+## Yeniden Akış bellek testi
+- [ ] 30+ sayfa boyunca ilerle.
+- [ ] Yalnızca güncel / sayfa kapsamlı metin tutuluyor.
+- [ ] Yazı boyutu kontrolleri yanıt veriyor.
 
-## Long reader stability
-- [ ] Keep large PDF open 10+ minutes.
-- [ ] Zoom 1x -> max -> 1x repeatedly.
-- [ ] Change pages rapidly at 1x.
-- [ ] Change pages rapidly while zoomed.
-- [ ] Rotate portrait/landscape repeatedly.
-- [ ] Open/close multiple PDFs sequentially.
-- [ ] No progressive slowdown or crash.
+## Uzun okuma kararlılığı
+- [ ] Büyük bir PDF'i 10+ dakika açık tut.
+- [ ] 1x -> en büyük -> 1x yakınlaştırmayı tekrarla.
+- [ ] 1x'te hızlı sayfa değiştir.
+- [ ] Yakınlaştırılmışken hızlı sayfa değiştir.
+- [ ] Dikey/yatay tekrar tekrar döndür.
+- [ ] Birden fazla PDF'i art arda aç/kapat.
+- [ ] Kademeli yavaşlama veya çökme yok.
 
-## Memory warning
-Under pressure verify:
-- [ ] thumbnail cache clears;
-- [ ] search disposable results/state can clear safely;
-- [ ] temporary highlight/text-selection geometry clears;
-- [ ] Belge Gezgini temporary summary can clear;
-- [ ] current PDF/page remains recoverable.
+## Bellek uyarısı
+Baskı altında doğrula:
+- [ ] küçük resim önbelleği temizleniyor;
+- [ ] atılabilir arama sonuçları/durumu güvenle temizlenebiliyor;
+- [ ] geçici vurgu / metin seçimi geometrisi temizleniyor;
+- [ ] Belge Gezgini geçici özeti temizlenebiliyor;
+- [ ] güncel PDF/sayfa kurtarılabilir kalıyor.
 
-## Companion-app boundary regression
-PDFReader is not being expanded as a file manager or FTP client.
+## Yardımcı uygulama sınırı regresyonu
+PDFReader dosya yöneticisi veya FTP istemcisi olarak genişletilmiyor.
 
-- [ ] Existing legacy HTTP/FTP/WebDAV compatibility does not regress.
-- [ ] No new transfer queue/resume subsystem is added here.
-- [ ] Shared file management remains delegated to iPad1Files.
-- [ ] FTP transfer work remains delegated to iPad1FTPDownloader.
+- [ ] Mevcut eski HTTP/FTP/WebDAV uyumluluğu bozulmuyor.
+- [ ] Buraya yeni transfer kuyruğu / devam alt sistemi eklenmiyor.
+- [ ] Ortak dosya yönetimi iPad1Files'a devredilmiş kalıyor.
+- [ ] FTP transfer işi iPad1FTPDownloader'a devredilmiş kalıyor.
 
-## RAM engineering targets
-- normal reading: roughly **30–50 MB preferred**;
-- special operations: ideally well below **70–90 MB**;
-- no feature may introduce unbounded arrays, whole-document text retention or multi-page full-resolution bitmap caching;
-- sustained unbounded memory growth is a test failure.
+## RAM mühendislik hedefleri
+- normal okuma: tercihen yaklaşık **30–50 MB**;
+- özel işlemler: ideal olarak **70–90 MB**'nin oldukça altında;
+- hiçbir özellik sınırsız diziler, tüm belge metnini tutma veya çok sayfalı tam çözünürlüklü bitmap önbelleği getiremez;
+- sürekli, sınırsız bellek artışı test başarısızlığıdır.

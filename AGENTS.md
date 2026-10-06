@@ -1,7 +1,7 @@
 # AGENTS.md
 
-## Read first
-Before editing this repository, read in this order:
+## Önce oku
+Bu repoda değişiklik yapmadan önce şu sırayla oku:
 1. `SESSION.md`
 2. `ARCHITECTURE.md`
 3. `INTEGRATION.md`
@@ -10,29 +10,29 @@ Before editing this repository, read in this order:
 6. `README.md`
 7. `CLAUDE.md`
 
-Then continue from `SESSION.md -> Immediate next action`.
+Ardından `SESSION.md -> Hemen yapılacak sonraki adım` bölümünden devam et.
 
-## Non-negotiable platform
+## Değiştirilemez platform
 - iPad 1
 - Apple A4
 - 256 MB RAM
 - iOS 5.1.1
 - armv7
-- non-ARC / manual retain-release
+- non-ARC / manuel retain-release
 - Theos
-- legacy iPhoneOS 6.1 SDK
+- eski iPhoneOS 6.1 SDK
 
-Required Makefile target:
+Zorunlu Makefile hedefi:
 
 ```make
 ARCHS = armv7
 TARGET = iphone:clang:6.1:5.1
 ```
 
-Never modernize deployment target or introduce unavailable post-iOS-5 APIs merely for convenience.
+Yalnızca kolaylık için dağıtım hedefini yükseltme veya iOS 5 sonrasına ait, mevcut olmayan API'leri ekleme.
 
-## Three-app ecosystem boundary
-Do not duplicate sibling-app responsibilities.
+## Üç uygulamalı ekosistem sınırı
+Kardeş uygulamaların sorumluluklarını çoğaltma.
 
 ```text
 iPad1Files          = shared filesystem/file management/Open With
@@ -40,59 +40,61 @@ iPad1FTPDownloader  = FTP browse/download/upload/queue/resume
 iPad1PDFReader      = PDF rendering/search/reflow/annotation/page management
 ```
 
-PDFReader's legacy HTTP/FTP/WebDAV code is maintenance-only. Do not grow it for competitor parity.
+(iPad1Files = ortak dosya sistemi / dosya yönetimi / "Birlikte Aç"; iPad1FTPDownloader = FTP gezinme / indirme / yükleme / kuyruk / devam; iPad1PDFReader = PDF görüntüleme / arama / yeniden akış / notlandırma / sayfa yönetimi)
 
-Canonical shared root:
+PDFReader'daki eski HTTP/FTP/WebDAV kodu yalnızca bakım modundadır. Rakiplerle eşitlenmek için büyütme.
+
+Standart ortak kök:
 
 ```text
 /var/mobile/Media/iPad1Files
 ```
 
-PDF handoff:
+PDF devri:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-## Feature classification
-- **Green**: low-memory/incremental -> generally safe.
-- **Yellow**: requires hard caps/page-local work/device profiling.
-- **Red**: reject on-device.
+## Özellik sınıflandırması
+- **Yeşil**: düşük bellekli / kademeli -> genelde güvenli.
+- **Sarı**: kesin üst sınırlar, sayfa bazlı çalışma ve cihaz profili gerektirir.
+- **Kırmızı**: cihaz üzerinde reddedilir.
 
-Red examples:
+Kırmızı örnekler:
 - OCR;
 - AI/ML;
-- whole-document bitmap caches;
-- persistent full-document text index;
-- large cloud SDKs;
-- heavy PDF/network engines without measured need.
+- tüm belgeyi kapsayan bitmap önbellekleri;
+- kalıcı tam belge metin dizini;
+- büyük bulut SDK'ları;
+- ölçülmüş bir ihtiyaç olmadan ağır PDF/ağ motorları.
 
-## Hard memory rules
-- one active full PDF page render;
-- thumbnail cache max 8;
-- search results max 40;
-- search page-by-page;
-- Reflow page-by-page;
-- Belge Gezgini annotation summary max 80, max 40 per kind;
-- no parallel heavy work;
-- clear disposable state on memory warning;
-- MRC ownership correctness is mandatory.
+## Kesin bellek kuralları
+- aynı anda tek aktif tam sayfa görüntüleme;
+- küçük resim önbelleği en fazla 8;
+- arama sonucu en fazla 40;
+- arama sayfa sayfa;
+- Yeniden akış (Reflow) sayfa sayfa;
+- Belge Gezgini not özeti en fazla 80, tür başına en fazla 40;
+- paralel ağır iş yok;
+- bellek uyarısında atılabilir durum temizlenir;
+- MRC sahiplik doğruluğu zorunludur.
 
-## Current priority
-Finish page-local **real text highlight + fluorescent color** UX.
+## Güncel öncelik
+Sayfa bazlı **gerçek metin vurgulama + fosforlu renk** deneyimini tamamla.
 
-Rules:
-- active page only;
-- no whole-document glyph/text index;
-- temporary selection geometry must be released on page change/memory warning;
-- persist compact rect(s) + color only;
-- image/scanned PDF may use region highlight fallback;
-- never add OCR to make scanned PDFs selectable.
+Kurallar:
+- yalnızca aktif sayfa;
+- tüm belgeyi kapsayan glif/metin dizini yok;
+- geçici seçim geometrisi sayfa değişince/bellek uyarısında serbest bırakılmalı;
+- yalnızca sıkıştırılmış dikdörtgen(ler) + renk saklanır;
+- görsel/taranmış PDF'lerde bölge vurgulama yedeği kullanılabilir;
+- taranmış PDF'leri seçilebilir yapmak için asla OCR ekleme.
 
-## Definition of done
-A feature is not done until:
-- legacy build succeeds;
-- physical iPad 1 test succeeds;
-- memory is bounded;
-- relevant `TESTING.md` checks pass;
-- documentation is updated.
+## "Bitti" tanımı
+Bir özellik şu koşullar sağlanmadan bitmiş sayılmaz:
+- eski toolchain ile derleme başarılı;
+- fiziksel iPad 1 testi başarılı;
+- bellek sınırlı;
+- ilgili `TESTING.md` kontrolleri geçti;
+- dokümantasyon güncellendi.
